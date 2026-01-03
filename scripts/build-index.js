@@ -1,4 +1,3 @@
-// scripts/build-index.js
 const fs = require("fs");
 const path = require("path");
 
@@ -30,7 +29,6 @@ function walk(relDir) {
     });
   }
 
-  // folders first, then name
   items.sort((a, b) => {
     if (a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
     return a.name.localeCompare(b.name);
@@ -46,11 +44,9 @@ for (const top of ALLOWED) {
   tree[top] = walk(top);
 }
 
-const out = {
-  generatedAt: Date.now(),
-  roots: ALLOWED,
-  tree
-};
+fs.writeFileSync(
+  path.join(ROOT, "_index.json"),
+  JSON.stringify({ generatedAt: Date.now(), roots: ALLOWED, tree }, null, 2)
+);
 
-fs.writeFileSync(path.join(ROOT, "_index.json"), JSON.stringify(out, null, 2));
-console.log("Wrote public/_index.json");
+console.log("✅ Wrote public/_index.json");
