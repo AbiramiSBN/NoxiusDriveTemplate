@@ -6,378 +6,539 @@
   <title>NoxiustDrive</title>
   <style>
     :root{
-      --border: rgba(255,255,255,.14);
-      --border2: rgba(255,255,255,.20);
       --text: rgba(255,255,255,.92);
-      --muted: rgba(255,255,255,.70);
-      --accent:#60a5fa;
-      --panel: rgba(0,0,0,.18);
-      --panel2: rgba(255,255,255,.05);
+      --muted: rgba(255,255,255,.72);
+      --muted2: rgba(255,255,255,.55);
+      --stroke: rgba(255,255,255,.14);
+      --stroke2: rgba(255,255,255,.22);
+      --panel: rgba(14,16,24,.52);
+      --panel2: rgba(10,12,18,.42);
+      --glass: rgba(255,255,255,.06);
+      --glass2: rgba(255,255,255,.10);
+      --accent: #60a5fa;
+      --accent2: rgba(96,165,250,.24);
       --shadow: 0 24px 90px rgba(0,0,0,.70);
       --font: system-ui, -apple-system, "Segoe UI Variable", "Segoe UI", Roboto, Arial, sans-serif;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --r12: 12px;
+      --r14: 14px;
+      --r16: 16px;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0; overflow:hidden; font-family:var(--font); color:var(--text);
       background:
-        linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.65)),
+        linear-gradient(180deg, rgba(0,0,0,.45), rgba(0,0,0,.70)),
         url("pictures/wallpapers/wallpaper2.jpeg");
       background-size:cover; background-position:center; background-repeat:no-repeat;
     }
+
+    /* ===== Lock Screen ===== */
+    .lock{
+      position:fixed; inset:0; z-index:99999;
+      display:flex; align-items:center; justify-content:center;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,.50), rgba(0,0,0,.75)),
+        url("pictures/wallpapers/wallpaper.jpeg");
+      background-size:cover; background-position:center;
+    }
+    .lock::before{
+      content:"";
+      position:absolute; inset:0;
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+    }
+    .lockcard{
+      position:relative;
+      width:min(520px, 92vw);
+      border-radius: 22px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(10,12,18,.48);
+      box-shadow: 0 40px 120px rgba(0,0,0,.75);
+      padding: 22px 22px 18px;
+    }
+    .locktop{
+      display:flex; align-items:center; gap:14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      margin-bottom: 14px;
+    }
+    .avatar{
+      width:54px; height:54px; border-radius: 18px;
+      display:grid; place-items:center;
+      background: rgba(96,165,250,.20);
+      border:1px solid rgba(96,165,250,.30);
+      font-size: 26px;
+    }
+    .locktitle b{display:block; font-size:1.15rem}
+    .locktitle span{display:block; color:var(--muted); font-size:.9rem}
+    .lockform{display:flex; gap:10px; margin-top: 14px}
+    .inp{
+      flex:1;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      padding: 12px 12px;
+      color: var(--text);
+      outline:none;
+      font-size: 1rem;
+    }
+    .inp::placeholder{color: rgba(255,255,255,.45)}
+    .lockbtn{
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      color: var(--text);
+      padding: 12px 14px;
+      cursor:pointer;
+      font-weight: 600;
+    }
+    .lockbtn:hover{background: rgba(255,255,255,.14)}
+    .lockmsg{
+      margin-top: 10px;
+      color: rgba(255,255,255,.78);
+      font-size: .9rem;
+      min-height: 1.1em;
+    }
+
+    /* ===== App Shell ===== */
     .window{position:relative; width:100vw; height:100vh; overflow:hidden;}
     .mica{
       position:absolute; inset:0; pointer-events:none;
       background:
         radial-gradient(1200px 900px at 20% 15%, rgba(96,165,250,.10), transparent 55%),
-        radial-gradient(900px 700px at 80% 20%, rgba(52,211,153,.06), transparent 60%),
-        linear-gradient(180deg, rgba(0,0,0,.26), rgba(0,0,0,.55));
-      backdrop-filter: blur(18px) saturate(140%);
-      -webkit-backdrop-filter: blur(18px) saturate(140%);
+        radial-gradient(900px 700px at 85% 25%, rgba(34,197,94,.06), transparent 60%),
+        linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.60));
+      backdrop-filter: blur(16px) saturate(135%);
+      -webkit-backdrop-filter: blur(16px) saturate(135%);
     }
     .ui{
       position:relative; z-index:1;
       width:100%; height:100%;
       display:flex; flex-direction:column;
-      background: rgba(10,14,24,.55);
+      background: rgba(10,14,24,.56);
       border:1px solid rgba(255,255,255,.10);
       box-shadow: var(--shadow);
     }
-    .titlebar{
-      height:46px; display:flex; align-items:center; justify-content:space-between;
-      padding:0 12px; user-select:none;
-      background: rgba(0,0,0,.34);
-      border-bottom:1px solid var(--border);
-      backdrop-filter: blur(10px);
+
+    /* ===== Top Bar (Dolphin/Nautilus-ish) ===== */
+    .topbar{
+      height:52px;
+      display:flex; align-items:center; gap:10px;
+      padding: 0 12px;
+      background: rgba(0,0,0,.28);
+      border-bottom: 1px solid var(--stroke);
+      backdrop-filter: blur(12px);
     }
-    .title-left{display:flex; align-items:center; gap:10px;}
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      padding-right: 10px;
+      border-right: 1px solid rgba(255,255,255,.10);
+      margin-right: 2px;
+    }
     .appicon{
-      width:26px;height:26px;border-radius:8px;
-      display:grid;place-items:center;
-      background:rgba(96,165,250,.18);
-      border:1px solid rgba(96,165,250,.28);
+      width:30px;height:30px;border-radius:10px;
+      display:grid; place-items:center;
+      background: rgba(96,165,250,.18);
+      border:1px solid rgba(96,165,250,.30);
+      font-size: 16px;
     }
-    .apptitle{line-height:1.05}
-    .apptitle b{display:block;font-size:.98rem}
-    .apptitle span{display:block;font-size:.78rem;color:var(--muted)}
-    .cmdbar{
-      display:flex; align-items:center; gap:10px;
-      padding:10px 12px; user-select:none;
-      background: rgba(0,0,0,.22);
-      border-bottom:1px solid var(--border);
-      backdrop-filter: blur(10px);
-    }
-    .btn{
-      appearance:none; border:1px solid var(--border2);
-      background: rgba(255,255,255,.07);
-      color:var(--text);
-      padding:8px 10px; border-radius:12px;
-      cursor:pointer; font-size:.92rem;
-      display:inline-flex; gap:8px; align-items:center;
-    }
-    .btn:hover{background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.26)}
-    .btn:disabled{opacity:.45; cursor:not-allowed}
-    .addrrow{
-      display:flex; align-items:center; gap:10px;
-      padding:10px 12px;
-      background: rgba(0,0,0,.14);
-      border-bottom:1px solid var(--border);
-      backdrop-filter: blur(10px);
-    }
-    .addr{
-      flex:1; min-width:0;
-      display:flex; align-items:center; gap:6px;
-      padding:8px 10px; border-radius:12px;
-      border:1px solid var(--border2);
+    .brand b{font-size:1rem; letter-spacing:.2px}
+    .brand span{display:block; color:var(--muted2); font-size:.78rem; margin-top:2px}
+
+    .toolbtn{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
-      overflow:auto; scrollbar-width: thin;
-      font-family: var(--mono);
-      font-size:.9rem;
-      color: rgba(255,255,255,.92);
+      color: var(--text);
+      padding: 9px 10px;
+      border-radius: 14px;
+      cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+      font-size: .95rem;
+      user-select:none;
+    }
+    .toolbtn:hover{background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.22)}
+    .toolbtn:disabled{opacity:.45; cursor:not-allowed}
+    .toolbtn.slim{padding:9px 9px}
+    .spacer{flex:1}
+
+    .pathbar{
+      flex: 1;
+      min-width: 240px;
+      display:flex; align-items:center; gap:6px;
+      padding: 9px 10px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      overflow:auto;
+      scrollbar-width: thin;
+      user-select:none;
     }
     .crumb{
       display:inline-flex; align-items:center; gap:6px;
-      cursor:pointer; padding:3px 6px; border-radius:8px;
+      padding: 4px 8px;
+      border-radius: 12px;
       border:1px solid transparent;
+      cursor:pointer;
       white-space:nowrap;
+      font-family: var(--mono);
+      font-size: .88rem;
+      color: rgba(255,255,255,.90);
     }
-    .crumb:hover{background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12)}
+    .crumb:hover{background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.14)}
     .sep{color: rgba(255,255,255,.45)}
+
     .search{
-      width:min(420px,45vw);
+      width: min(420px, 34vw);
       display:flex; align-items:center; gap:8px;
-      padding:8px 10px; border-radius:12px;
-      border:1px solid var(--border2);
+      padding: 9px 10px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.16);
       background: rgba(255,255,255,.06);
     }
-    .search input{width:100%; border:0; outline:none; background:transparent; color:var(--text); font-size:.92rem}
-
-    .body{flex:1; display:flex; min-height:0;}
-    .left{
-      width:310px; min-height:0;
-      background: var(--panel);
-      border-right:1px solid var(--border);
-      padding:10px; display:flex; flex-direction:column; gap:10px;
+    .search input{
+      width:100%;
+      border:0; outline:none;
+      background:transparent;
+      color: var(--text);
+      font-size: .95rem;
     }
-    .panehdr{
-      display:flex; justify-content:space-between; align-items:center;
-      padding:8px 10px; border-radius:12px;
-      border:1px solid rgba(255,255,255,.10);
-      background: var(--panel2);
-      color:var(--muted);
-      font-size:.84rem; letter-spacing:.08em; text-transform:uppercase;
+
+    .toggle{
+      display:flex; gap:6px; align-items:center;
+      padding: 4px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.16);
       user-select:none;
     }
-    .tree{overflow:auto}
-    .node{
-      display:flex; align-items:center; gap:10px;
-      padding:10px; border-radius:12px;
-      cursor:pointer; user-select:none;
+    .pill{
+      padding: 7px 10px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-size: .9rem;
+      border:1px solid transparent;
+      color: rgba(255,255,255,.86);
+    }
+    .pill:hover{background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.10)}
+    .pill.active{
+      background: rgba(96,165,250,.20);
+      border-color: rgba(96,165,250,.28);
+      color: rgba(255,255,255,.95);
+    }
+
+    /* ===== Main Layout ===== */
+    .body{flex:1; display:flex; min-height:0;}
+    .sidebar{
+      width: 320px; min-height:0;
+      background: rgba(0,0,0,.18);
+      border-right: 1px solid var(--stroke);
+      padding: 12px;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .panehdr{
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: var(--muted);
+      font-size: .84rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      user-select:none;
+    }
+    .places{overflow:auto}
+    .place{
+      display:flex; align-items:center; gap:12px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      cursor:pointer;
+      user-select:none;
       border:1px solid transparent;
     }
-    .node:hover{background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.14)}
-    .icon{
-      width:30px;height:30px;border-radius:10px;
+    .place:hover{background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.12)}
+    .place.active{background: rgba(96,165,250,.16); border-color: rgba(96,165,250,.22)}
+    .picon{
+      width: 34px; height: 34px; border-radius: 14px;
       display:grid; place-items:center;
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.10);
     }
-    .label b{display:block; font-size:.94rem}
-    .label span{display:block; font-size:.78rem; color:var(--muted); font-family:var(--mono)}
-    .main{flex:1; min-width:0; padding:12px; display:flex; flex-direction:column; min-height:0;}
-    .list{
+    .plabel b{display:block; font-size:.98rem}
+    .plabel span{display:block; font-size:.78rem; color: var(--muted2); font-family: var(--mono)}
+
+    .content{
+      flex:1; min-width:0; min-height:0;
+      display:flex; flex-direction:column;
+      padding: 12px;
+      gap: 12px;
+    }
+    .frame{
       flex:1; min-height:0;
-      border:1px solid var(--border);
-      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
       background: rgba(0,0,0,.16);
-      overflow:hidden; display:flex; flex-direction:column;
+      overflow:hidden;
+      display:flex; flex-direction:column;
     }
     .listhead{
       display:grid;
       grid-template-columns: 1.55fr .75fr .85fr;
-      padding:10px 12px;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: .82rem;
       background: rgba(255,255,255,.05);
-      border-bottom:1px solid var(--border);
-      color:var(--muted);
-      font-size:.82rem;
+      border-bottom: 1px solid rgba(255,255,255,.10);
       user-select:none;
     }
-    .rows{flex:1; overflow:auto; outline:none;}
+
+    .rows{
+      flex:1; min-height:0;
+      overflow:auto;
+      outline:none;
+      position:relative;
+    }
     .row{
       display:grid;
       grid-template-columns: 1.55fr .75fr .85fr;
-      padding:10px 12px;
-      border-bottom:1px solid rgba(255,255,255,.06);
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
       align-items:center;
-      cursor:pointer; user-select:none;
-      border-left:3px solid transparent;
+      cursor:pointer;
+      user-select:none;
+      border-left: 3px solid transparent;
     }
     .row:hover{background: rgba(255,255,255,.07)}
-    .row.selected{background: rgba(96,165,250,.18); border-left-color: rgba(96,165,250,.78)}
+    .row.selected{
+      background: rgba(96,165,250,.18);
+      border-left-color: rgba(96,165,250,.78);
+    }
     .cellname{display:flex; align-items:center; gap:10px; min-width:0}
     .fileicon{
-      width:30px;height:30px;border-radius:10px;
+      width: 32px; height: 32px; border-radius: 12px;
       display:grid; place-items:center;
       background: rgba(96,165,250,.16);
-      border:1px solid rgba(96,165,250,.22);
+      border: 1px solid rgba(96,165,250,.22);
       flex:0 0 auto;
     }
     .nametext{min-width:0}
     .nametext b{display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
-    .nametext span{display:block; font-size:.8rem; color:var(--muted); font-family:var(--mono); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
-    .type,.modified{color:var(--muted); font-size:.9rem}
-    .details{
-      width:360px; min-height:0;
-      background: var(--panel);
-      border-left:1px solid var(--border);
-      padding:12px; display:flex; flex-direction:column; gap:10px;
-    }
-    .preview{
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.05);
-      border-radius:16px;
-      padding:12px;
-      min-height:170px;
-      display:flex; align-items:center; justify-content:center;
-      position:relative; overflow:hidden; user-select:none;
-    }
-    .preview img{
-      max-width:100%; max-height:140px;
-      border-radius:12px; border:1px solid rgba(255,255,255,.10);
-    }
-    .bigicon{font-size:52px}
-    .preview small{
-      position:absolute; bottom:10px; left:12px; right:12px;
-      color: rgba(255,255,255,.78);
-      font-size:.82rem;
-      font-family:var(--mono);
+    .nametext span{
+      display:block;
+      font-size:.8rem;
+      color: var(--muted2);
+      font-family: var(--mono);
       overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
     }
-    .props{
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.05);
-      border-radius:16px;
-      padding:12px;
-      overflow:auto;
-      flex:1;
-    }
-    .props h3{margin:0 0 10px 0; font-size:.95rem}
-    .kv{display:grid; grid-template-columns:1fr 1.2fr; gap:8px 10px; font-size:.88rem}
-    .k{color:var(--muted)}
-    .v{font-family:var(--mono); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
-    .statusbar{
-      height:34px;
-      border-top:1px solid var(--border);
-      background: rgba(0,0,0,.22);
-      display:flex; align-items:center; justify-content:space-between;
-      padding:0 12px;
-      color:var(--muted);
-      font-size:.86rem;
-      user-select:none;
-      backdrop-filter: blur(10px);
-    }
-    .ctx{
-      position:fixed; z-index:10000; display:none;
-      min-width:170px;
-      background: rgba(2,6,23,0.92);
-      border:1px solid rgba(255,255,255,0.14);
-      border-radius:14px;
-      box-shadow: 0 16px 50px rgba(0,0,0,0.65);
-      padding:6px;
-      backdrop-filter: blur(16px);
-      user-select:none;
-    }
-    .ctx button{
-      width:100%; border:0; background:transparent;
-      color:var(--text);
-      padding:10px 10px; border-radius:10px;
-      cursor:pointer; text-align:left;
-      font-size:.92rem;
-    }
-    .ctx button:hover{background: rgba(255,255,255,0.08)}
-    .ctx button:disabled{opacity:.45; cursor:not-allowed}
-
-    /* ===== View Toggle ===== */
-    .viewtoggle { display:flex; gap:8px; align-items:center; }
-    .pill {
-      border:1px solid var(--border2);
-      background: rgba(255,255,255,.06);
-      padding:8px 10px;
-      border-radius:12px;
-      cursor:pointer;
-      user-select:none;
-      font-size:.92rem;
-    }
-    .pill.active {
-      background: rgba(96,165,250,.18);
-      border-color: rgba(96,165,250,.35);
-    }
+    .type,.modified{color: var(--muted); font-size:.9rem}
 
     /* ===== Grid View ===== */
-    .rows.grid {
+    .rows.grid{
       display:grid;
       gap:10px;
       padding:10px;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
       align-content:start;
     }
-    .tile {
+    .tile{
       border:1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.16);
-      border-radius:14px;
+      border-radius: 18px;
       overflow:hidden;
       cursor:pointer;
       user-select:none;
       transition: transform .08s ease, background .08s ease;
     }
-    .tile:hover { background: rgba(255,255,255,.06); transform: translateY(-1px); }
-    .tile.selected { outline: 2px solid rgba(96,165,250,.65); }
-    .thumb {
-      height:120px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
+    .tile:hover{background: rgba(255,255,255,.06); transform: translateY(-1px)}
+    .tile.selected{outline: 2px solid rgba(96,165,250,.65)}
+    .thumb{
+      height: 120px;
+      display:flex; align-items:center; justify-content:center;
       background: rgba(255,255,255,.04);
       position:relative;
     }
-    .thumb img, .thumb video {
+    .thumb img, .thumb video{
       max-width:100%;
       max-height:100%;
-      border-radius:10px;
+      border-radius: 14px;
     }
-    .thumb .emoji { font-size:44px; opacity:.95; }
-    .tilemeta { padding:10px; }
-    .tilemeta b {
+    .thumb .emoji{font-size:44px; opacity:.95}
+    .tilemeta{padding: 10px 12px}
+    .tilemeta b{
       display:block;
-      overflow:hidden;
-      white-space:nowrap;
-      text-overflow:ellipsis;
+      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+      font-size:.95rem;
     }
-    .tilemeta span {
+    .tilemeta span{
       display:block;
       margin-top:4px;
-      font-size:.8rem;
-      color: var(--muted);
+      font-size:.78rem;
+      color: var(--muted2);
       font-family: var(--mono);
-      overflow:hidden;
-      white-space:nowrap;
-      text-overflow:ellipsis;
+      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
     }
 
-    /* Lazy footer */
-    .loadmore {
-      padding:12px;
-      text-align:center;
+    .details{
+      width: 380px; min-height:0;
+      background: rgba(0,0,0,.18);
+      border-left: 1px solid var(--stroke);
+      padding: 12px;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .preview{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      border-radius: 18px;
+      padding: 12px;
+      min-height: 190px;
+      display:flex; align-items:center; justify-content:center;
+      position:relative;
+      overflow:hidden;
+      user-select:none;
+    }
+    .preview img{
+      max-width:100%;
+      max-height: 150px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .preview small{
+      position:absolute; bottom:10px; left:12px; right:12px;
+      color: rgba(255,255,255,.78);
+      font-size: .82rem;
+      font-family: var(--mono);
+      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+    }
+    .bigicon{font-size: 56px}
+    .props{
+      flex:1; min-height:0;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      border-radius: 18px;
+      padding: 12px;
+      overflow:auto;
+    }
+    .props h3{margin:0 0 10px 0; font-size: .98rem}
+    .kv{
+      display:grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 8px 10px;
+      font-size: .88rem;
+    }
+    .k{color: var(--muted)}
+    .v{
+      font-family: var(--mono);
+      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+    }
+
+    .statusbar{
+      height: 34px;
+      border-top: 1px solid var(--stroke);
+      background: rgba(0,0,0,.22);
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 0 12px;
       color: var(--muted);
+      font-size: .86rem;
+      user-select:none;
+      backdrop-filter: blur(10px);
+    }
+
+    .loadmore{
+      padding: 12px;
+      text-align:center;
+      color: var(--muted2);
       border-top: 1px solid rgba(255,255,255,.06);
     }
+
+    .ctx{
+      position:fixed; z-index:10000; display:none;
+      min-width: 170px;
+      background: rgba(2,6,23,0.92);
+      border:1px solid rgba(255,255,255,0.14);
+      border-radius: 16px;
+      box-shadow: 0 16px 50px rgba(0,0,0,0.65);
+      padding: 6px;
+      backdrop-filter: blur(16px);
+      user-select:none;
+    }
+    .ctx button{
+      width:100%;
+      border:0; background:transparent;
+      color: var(--text);
+      padding: 10px 10px;
+      border-radius: 12px;
+      cursor:pointer;
+      text-align:left;
+      font-size: .92rem;
+    }
+    .ctx button:hover{background: rgba(255,255,255,0.08)}
+    .ctx button:disabled{opacity:.45; cursor:not-allowed}
   </style>
 </head>
 
 <body>
+  <!-- Lock (client-side) -->
+  <div class="lock" id="lock" style="display:none;">
+    <div class="lockcard">
+      <div class="locktop">
+        <div class="avatar">🔒</div>
+        <div class="locktitle">
+          <b>NoxiustDrive</b>
+          <span id="lockHint">Enter to unlock</span>
+        </div>
+      </div>
+      <div class="lockform">
+        <input class="inp" id="lockPass" type="password" placeholder="Password" />
+        <button class="lockbtn" id="unlockBtn">Unlock</button>
+      </div>
+      <div class="lockmsg" id="lockMsg"></div>
+    </div>
+  </div>
+
   <div class="window">
     <div class="mica"></div>
 
     <div class="ui" id="ui">
-      <div class="titlebar">
-        <div class="title-left">
+      <div class="topbar">
+        <div class="brand">
           <div class="appicon">🗂️</div>
-          <div class="apptitle">
+          <div>
             <b>NoxiustDrive</b>
-            <span id="subtitle">Online</span>
+            <span id="subtitle">Ready</span>
           </div>
         </div>
-      </div>
 
-      <div class="cmdbar">
-        <button class="btn" id="openBtn" disabled>📂 Open</button>
-        <button class="btn" id="upBtn">⬆️ Up</button>
-        <button class="btn" id="refreshBtn">🔄 Refresh</button>
+        <button class="toolbtn slim" id="backBtn" title="Back">⬅️</button>
+        <button class="toolbtn slim" id="fwdBtn" title="Forward">➡️</button>
+        <button class="toolbtn slim" id="upBtn" title="Up">⬆️</button>
+        <button class="toolbtn slim" id="refreshBtn" title="Refresh">🔄</button>
 
-        <div style="flex:1"></div>
+        <div class="pathbar" id="addr"></div>
 
-        <div class="viewtoggle">
-          <div class="pill active" id="listViewBtn">☰ List</div>
-          <div class="pill" id="gridViewBtn">▦ Grid</div>
+        <div class="search">🔎 <input id="searchBox" placeholder="Search"/></div>
+
+        <div class="toggle" aria-label="View">
+          <div class="pill" id="listViewBtn">List</div>
+          <div class="pill" id="gridViewBtn">Grid</div>
         </div>
 
-        <div class="btn" style="cursor:default; opacity:.9;">📡 <span id="net">Ready</span></div>
-      </div>
+        <button class="toolbtn" id="openBtn" disabled>📂 Open</button>
+        <button class="toolbtn" id="logoutBtn" title="Lock">🔒 Logout</button>
 
-      <div class="addrrow">
-        <div class="addr" id="addr"></div>
-        <div class="search">🔎 <input id="searchBox" placeholder="Search (filters list)"/></div>
+        <div class="toolbtn" style="cursor:default; opacity:.92;">📡 <span id="net">OK</span></div>
       </div>
 
       <div class="body">
-        <div class="left">
-          <div class="panehdr"><span>This PC</span><span>Tree</span></div>
-          <div class="tree" id="tree"></div>
+        <div class="sidebar">
+          <div class="panehdr"><span>Places</span><span>This PC</span></div>
+          <div class="places" id="places"></div>
         </div>
 
-        <div class="main">
-          <div class="list">
+        <div class="content">
+          <div class="frame">
             <div class="listhead" id="listHead"><div>Name</div><div>Type</div><div>Date modified</div></div>
             <div class="rows" id="rows" tabindex="0"></div>
             <div class="loadmore" id="loadMore" style="display:none;">Loading more…</div>
@@ -385,7 +546,7 @@
         </div>
 
         <div class="details">
-          <div class="panehdr"><span>Details</span><span>Preview + Properties</span></div>
+          <div class="panehdr"><span>Details</span><span>Preview</span></div>
           <div class="preview" id="preview">
             <div class="bigicon">🗂️</div>
             <small>Select an item</small>
@@ -407,18 +568,22 @@
   <div class="ctx" id="ctxMenu"><button id="ctxOpen" disabled>Open</button></div>
 
 <script>
+  // ===== DOM =====
   const rowsEl = document.getElementById("rows");
   const searchBox = document.getElementById("searchBox");
   const openBtn = document.getElementById("openBtn");
   const refreshBtn = document.getElementById("refreshBtn");
   const upBtn = document.getElementById("upBtn");
+  const backBtn = document.getElementById("backBtn");
+  const fwdBtn = document.getElementById("fwdBtn");
   const addrEl = document.getElementById("addr");
-  const tree = document.getElementById("tree");
+  const placesEl = document.getElementById("places");
   const preview = document.getElementById("preview");
   const kv = document.getElementById("kv");
   const sbLeft = document.getElementById("sbLeft");
   const sbRight = document.getElementById("sbRight");
   const net = document.getElementById("net");
+  const subtitle = document.getElementById("subtitle");
 
   const listViewBtn = document.getElementById("listViewBtn");
   const gridViewBtn = document.getElementById("gridViewBtn");
@@ -428,6 +593,14 @@
   const ctxMenu = document.getElementById("ctxMenu");
   const ctxOpen = document.getElementById("ctxOpen");
 
+  const logoutBtn = document.getElementById("logoutBtn");
+  const lock = document.getElementById("lock");
+  const lockPass = document.getElementById("lockPass");
+  const unlockBtn = document.getElementById("unlockBtn");
+  const lockMsg = document.getElementById("lockMsg");
+  const lockHint = document.getElementById("lockHint");
+
+  // ===== Places =====
   const TOPS = [
     { key:"documents", name:"Documents", icon:"📄" },
     { key:"music",     name:"Music",     icon:"🎵" },
@@ -435,21 +608,22 @@
     { key:"videos",    name:"Videos",    icon:"🎬" },
   ];
 
+  // ===== State =====
   let INDEX = null;
-
-  // Current folder items
   let items = [];
-
-  // Render pool (filtered current folder)
   let renderPool = [];
   let selectedIndex = -1;
 
-  // View + lazy settings
-  let VIEW_MODE = localStorage.getItem("ND_VIEW") || "list"; // "list" | "grid"
+  let VIEW_MODE = localStorage.getItem("ND_VIEW") || "list"; // list|grid
   let RENDER_BATCH = 120;
   let renderCount = 0;
   let isRendering = false;
 
+  // Client-side lock (UI only)
+  const LOCK_KEY = "ND_LOCK_HASH_V1"; // store sha256(pass) here
+  let lockHash = localStorage.getItem(LOCK_KEY) || null;
+
+  // ===== Utils =====
   function extLower(name){
     const i = (name||"").lastIndexOf(".");
     return i>=0 ? name.slice(i+1).toLowerCase() : "";
@@ -460,7 +634,7 @@
 
   function iconFor(item){
     if(item.kind === "folder") return "📁";
-    const t = (item.type || extLower(item.name) || "").toLowerCase();
+    const t = extLower(item.name);
     if(isImageExt(t)) return "🖼️";
     if(isAudioExt(t)) return "🎵";
     if(isVideoExt(t)) return "🎬";
@@ -476,18 +650,15 @@
     while(x>=1024 && i<u.length-1){ x/=1024; i++; }
     return `${x.toFixed(i?1:0)} ${u[i]}`;
   }
-
   function fmtDate(ms){
     if(!ms) return "—";
-    const d = new Date(ms);
-    return d.toLocaleString();
+    return new Date(ms).toLocaleString();
   }
 
   function currentPath(){
     const p = new URLSearchParams(location.search).get("path") || "";
     return p.replace(/^\/+/, "").replace(/\/+$/, "");
   }
-
   function setPath(p){
     const url = new URL(location.href);
     if(p) url.searchParams.set("path", p);
@@ -500,24 +671,21 @@
     addrEl.innerHTML = "";
     const parts = pathStr ? pathStr.split("/") : [];
     const crumbs = [{ label: "This PC", path: "" }];
-
     let acc = "";
     for(const part of parts){
       acc = acc ? `${acc}/${part}` : part;
       crumbs.push({ label: part, path: acc });
     }
-
     crumbs.forEach((c, i)=>{
       const el = document.createElement("span");
       el.className = "crumb";
       el.textContent = c.label;
       el.onclick = ()=> setPath(c.path);
       addrEl.appendChild(el);
-
       if(i < crumbs.length - 1){
         const sep = document.createElement("span");
         sep.className = "sep";
-        sep.textContent = ">";
+        sep.textContent = "›";
         addrEl.appendChild(sep);
       }
     });
@@ -531,7 +699,6 @@
 
   function nodeChildrenForPath(p){
     if(!INDEX) return [];
-
     if(!p){
       return TOPS.map(t => ({
         name: t.name,
@@ -556,8 +723,7 @@
 
     const ch = (cur.children || []).map(x => ({
       ...x,
-      url: x.url || (x.kind === "folder" ? `/${x.relPath}/` : `/${x.relPath}`),
-      type: x.kind === "folder" ? "folder" : (extLower(x.name) || "file")
+      url: x.url || (x.kind === "folder" ? `/${x.relPath}/` : `/${x.relPath}`)
     }));
 
     ch.sort((a,b)=>{
@@ -568,22 +734,28 @@
     return ch;
   }
 
-  function renderTree(){
-    tree.innerHTML = "";
+  function renderPlaces(){
+    const p = currentPath();
+    const root = p.split("/")[0] || "";
+    placesEl.innerHTML = "";
     for(const t of TOPS){
-      const n = document.createElement("div");
-      n.className = "node";
-      n.innerHTML = `<div class="icon">${t.icon}</div>
-        <div class="label"><b>${t.name}</b><span>/${t.key}/</span></div>`;
-      n.onclick = ()=> setPath(t.key);
-      tree.appendChild(n);
+      const el = document.createElement("div");
+      el.className = "place" + (root === t.key ? " active" : "");
+      el.innerHTML = `
+        <div class="picon">${t.icon}</div>
+        <div class="plabel">
+          <b>${t.name}</b>
+          <span>/${t.key}/</span>
+        </div>
+      `;
+      el.onclick = ()=> setPath(t.key);
+      placesEl.appendChild(el);
     }
   }
 
   function applyFilterToPool(){
     const q = (searchBox.value || "").trim().toLowerCase();
-    const base = !q ? items : items.filter(x => (x.name||"").toLowerCase().includes(q));
-    return base;
+    return !q ? items : items.filter(x => (x.name||"").toLowerCase().includes(q));
   }
 
   function setViewMode(mode){
@@ -595,8 +767,6 @@
     rowsEl.classList.toggle("grid", mode === "grid");
     renderRows(true);
   }
-  listViewBtn.onclick = ()=> setViewMode("list");
-  gridViewBtn.onclick = ()=> setViewMode("grid");
 
   function renderRows(reset=false){
     if(reset){
@@ -612,6 +782,8 @@
     if(renderPool.length === 0){
       loadMoreEl.style.display = "none";
       updateDetails(null);
+      openBtn.disabled = true;
+      ctxOpen.disabled = true;
       return;
     }
 
@@ -620,11 +792,10 @@
 
   function highlightSelection(){
     const children = Array.from(rowsEl.children).filter(el => el.classList.contains("row") || el.classList.contains("tile"));
-    children.forEach((el, i)=>{
-      el.classList.toggle("selected", i === selectedIndex);
-    });
-    openBtn.disabled = (selectedIndex < 0);
-    ctxOpen.disabled = (selectedIndex < 0);
+    children.forEach((el, i)=> el.classList.toggle("selected", i === selectedIndex));
+    const has = !!selectedItem();
+    openBtn.disabled = !has;
+    ctxOpen.disabled = !has;
   }
 
   function selectedItem(){
@@ -642,25 +813,23 @@
         <div class="k">Modified</div><div class="v">—</div>
         <div class="k">URL</div><div class="v">—</div>
       `;
-      openBtn.disabled = true;
-      ctxOpen.disabled = true;
       return;
     }
 
     const ext = extLower(it.name);
-    const isImage = it.kind === "file" && isImageExt(ext);
-    const isVideo = it.kind === "file" && isVideoExt(ext);
-    const isAudio = it.kind === "file" && isAudioExt(ext);
+    const isImg = it.kind === "file" && isImageExt(ext);
+    const isVid = it.kind === "file" && isVideoExt(ext);
+    const isAud = it.kind === "file" && isAudioExt(ext);
 
-    if(isImage){
+    if(isImg){
       preview.innerHTML = `<img src="${it.url}" alt=""><small>${it.url}</small>`;
-    } else if(isVideo){
+    } else if(isVid){
       preview.innerHTML = `
         <video src="${it.url}" controls preload="metadata"
-          style="width:100%;max-height:140px;border-radius:12px;border:1px solid rgba(255,255,255,.10)"></video>
+          style="width:100%;max-height:150px;border-radius:14px;border:1px solid rgba(255,255,255,.10)"></video>
         <small>${it.url}</small>
       `;
-    } else if(isAudio){
+    } else if(isAud){
       preview.innerHTML = `
         <audio src="${it.url}" controls preload="metadata" style="width:100%"></audio>
         <small>${it.url}</small>
@@ -671,14 +840,11 @@
 
     kv.innerHTML = `
       <div class="k">Name</div><div class="v" title="${it.name}">${it.name}</div>
-      <div class="k">Type</div><div class="v">${it.kind === "folder" ? "File folder" : (ext || "file")}</div>
+      <div class="k">Type</div><div class="v">${it.kind === "folder" ? "Folder" : (ext || "file")}</div>
       <div class="k">Size</div><div class="v">${it.kind === "folder" ? "—" : fmtBytes(it.size)}</div>
       <div class="k">Modified</div><div class="v">${fmtDate(it.mtimeMs)}</div>
       <div class="k">URL</div><div class="v" title="${it.url}">${it.url}</div>
     `;
-
-    openBtn.disabled = false;
-    ctxOpen.disabled = false;
   }
 
   function openSelected(){
@@ -714,7 +880,7 @@
               <span>${e.url}</span>
             </div>
           </div>
-          <div class="type">${e.kind === "folder" ? "File folder" : (extLower(e.name) || "file")}</div>
+          <div class="type">${e.kind === "folder" ? "Folder" : (extLower(e.name) || "file")}</div>
           <div class="modified">${fmtDate(e.mtimeMs)}</div>
         `;
 
@@ -746,15 +912,10 @@
 
         const ext = extLower(e.name);
         const isImg = e.kind==="file" && isImageExt(ext);
-        const isVid = e.kind==="file" && isVideoExt(ext);
 
-        // NOTE: video thumbs can be heavy. If you want faster grid, change isVid handling to emoji.
+        // Grid thumbs: images only (fast). video/audio still preview in details pane.
         let thumbHTML = `<div class="emoji">${iconFor(e)}</div>`;
-        if(isImg){
-          thumbHTML = `<img src="${e.url}" loading="lazy" alt="">`;
-        } else if(isVid){
-          thumbHTML = `<video src="${e.url}" muted preload="metadata"></video>`;
-        }
+        if(isImg) thumbHTML = `<img src="${e.url}" loading="lazy" alt="">`;
 
         tile.innerHTML = `
           <div class="thumb">${thumbHTML}</div>
@@ -791,7 +952,6 @@
 
     rowsEl.appendChild(frag);
 
-    // first render: auto-select first item
     if(first){
       if(selectedIndex < 0 && renderPool.length > 0) selectedIndex = 0;
       highlightSelection();
@@ -818,21 +978,18 @@
   document.addEventListener("click", (ev)=>{ if(!ev.target.closest(".ctx")) hideCtx(); });
   window.addEventListener("resize", hideCtx);
 
-  // Lazy loading: when near bottom, render next batch
+  // ===== Lazy loading: scroll to load more =====
   rowsEl.addEventListener("scroll", ()=>{
     const nearBottom = rowsEl.scrollTop + rowsEl.clientHeight >= rowsEl.scrollHeight - 240;
-    if(nearBottom && renderCount < renderPool.length){
-      renderNextBatch(false);
-    }
+    if(nearBottom && renderCount < renderPool.length) renderNextBatch(false);
   });
 
-  // Keyboard navigation (works in list/grid)
+  // ===== Keyboard navigation =====
   rowsEl.addEventListener("keydown", (ev)=>{
     if(renderPool.length === 0) return;
     if(ev.key === "ArrowDown"){
       ev.preventDefault();
       selectedIndex = Math.min(renderPool.length-1, selectedIndex + 1);
-      // ensure selected is rendered
       while(renderCount <= selectedIndex && renderCount < renderPool.length) renderNextBatch(false);
       highlightSelection();
       updateDetails(selectedItem());
@@ -847,7 +1004,7 @@
     }
   });
 
-  // Buttons
+  // ===== Buttons =====
   openBtn.onclick = openSelected;
   refreshBtn.onclick = load;
 
@@ -859,10 +1016,88 @@
     setPath(parts.join("/"));
   };
 
-  searchBox.addEventListener("input", ()=>{
-    renderRows(true);
-  });
+  // Back/Forward use browser history
+  backBtn.onclick = ()=> history.back();
+  fwdBtn.onclick = ()=> history.forward();
 
+  // ===== Search =====
+  searchBox.addEventListener("input", ()=> renderRows(true));
+
+  // ===== View toggle =====
+  listViewBtn.onclick = ()=> setViewMode("list");
+  gridViewBtn.onclick = ()=> setViewMode("grid");
+
+  function setViewMode(mode){
+    setViewModeInternal(mode);
+  }
+  function setViewModeInternal(mode){
+    VIEW_MODE = mode;
+    localStorage.setItem("ND_VIEW", mode);
+    listViewBtn.classList.toggle("active", mode === "list");
+    gridViewBtn.classList.toggle("active", mode === "grid");
+    listHead.style.display = (mode === "list") ? "grid" : "none";
+    rowsEl.classList.toggle("grid", mode === "grid");
+    renderRows(true);
+  }
+
+  // ===== Lock / Logout (client-side) =====
+  async function sha256Hex(str){
+    const data = new TextEncoder().encode(str);
+    const hash = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");
+  }
+
+  function showLock(mode){
+    // mode: "setup" | "lock"
+    lock.style.display = "flex";
+    lockMsg.textContent = "";
+    lockPass.value = "";
+    lockPass.focus();
+
+    if(mode === "setup"){
+      lockHint.textContent = "Set a lock password (this device only)";
+      unlockBtn.textContent = "Set";
+    } else {
+      lockHint.textContent = "Enter to unlock";
+      unlockBtn.textContent = "Unlock";
+    }
+  }
+
+  async function handleUnlock(){
+    const pass = lockPass.value || "";
+    if(pass.length < 1){
+      lockMsg.textContent = "Enter a password.";
+      return;
+    }
+
+    if(!lockHash){
+      // First-time setup
+      lockHash = await sha256Hex(pass);
+      localStorage.setItem(LOCK_KEY, lockHash);
+      lock.style.display = "none";
+      subtitle.textContent = "Ready";
+      return;
+    }
+
+    const h = await sha256Hex(pass);
+    if(h === lockHash){
+      lock.style.display = "none";
+      subtitle.textContent = "Ready";
+    } else {
+      lockMsg.textContent = "Wrong password.";
+      lockPass.select();
+    }
+  }
+
+  unlockBtn.onclick = handleUnlock;
+  lockPass.addEventListener("keydown", (e)=>{ if(e.key === "Enter") handleUnlock(); });
+
+  logoutBtn.onclick = ()=>{
+    // "Logout" = lock the UI (client-side)
+    showLock("lock");
+  };
+
+  // ===== Load =====
   window.addEventListener("popstate", load);
 
   async function load(){
@@ -873,25 +1108,33 @@
 
     const p = currentPath();
     buildCrumbs(p);
+    renderPlaces();
 
     try{
       INDEX = await loadIndex();
       items = nodeChildrenForPath(p);
-      renderTree();
       renderRows(true);
       net.textContent = "OK";
       sbRight.textContent = "Ready";
     } catch(e){
       items = [];
-      renderTree();
       renderRows(true);
       net.textContent = "Error";
       sbRight.textContent = String(e);
     }
   }
 
-  // Initialize view mode then load
-  setViewMode(VIEW_MODE);
+  // Init view
+  setViewModeInternal(VIEW_MODE);
+
+  // Init lock: if no lockHash set, prompt to set one
+  if(!lockHash){
+    showLock("setup");
+  } else {
+    // Optional: start locked every time
+    // showLock("lock");
+  }
+
   load();
 </script>
 </body>
