@@ -26,7 +26,6 @@
         url("pictures/wallpapers/wallpaper2.jpeg");
       background-size:cover; background-position:center; background-repeat:no-repeat;
     }
-
     .window{position:relative; width:100vw; height:100vh; overflow:hidden;}
     .mica{
       position:absolute; inset:0; pointer-events:none;
@@ -45,7 +44,6 @@
       border:1px solid rgba(255,255,255,.10);
       box-shadow: var(--shadow);
     }
-
     .titlebar{
       height:46px; display:flex; align-items:center; justify-content:space-between;
       padding:0 12px; user-select:none;
@@ -63,7 +61,6 @@
     .apptitle{line-height:1.05}
     .apptitle b{display:block;font-size:.98rem}
     .apptitle span{display:block;font-size:.78rem;color:var(--muted)}
-
     .cmdbar{
       display:flex; align-items:center; gap:10px;
       padding:10px 12px; user-select:none;
@@ -81,7 +78,6 @@
     }
     .btn:hover{background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.26)}
     .btn:disabled{opacity:.45; cursor:not-allowed}
-
     .addrrow{
       display:flex; align-items:center; gap:10px;
       padding:10px 12px;
@@ -149,7 +145,6 @@
     }
     .label b{display:block; font-size:.94rem}
     .label span{display:block; font-size:.78rem; color:var(--muted); font-family:var(--mono)}
-
     .main{flex:1; min-width:0; padding:12px; display:flex; flex-direction:column; min-height:0;}
     .list{
       flex:1; min-height:0;
@@ -192,7 +187,6 @@
     .nametext b{display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
     .nametext span{display:block; font-size:.8rem; color:var(--muted); font-family:var(--mono); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
     .type,.modified{color:var(--muted); font-size:.9rem}
-
     .details{
       width:360px; min-height:0;
       background: var(--panel);
@@ -232,7 +226,6 @@
     .kv{display:grid; grid-template-columns:1fr 1.2fr; gap:8px 10px; font-size:.88rem}
     .k{color:var(--muted)}
     .v{font-family:var(--mono); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
-
     .statusbar{
       height:34px;
       border-top:1px solid var(--border);
@@ -244,7 +237,6 @@
       user-select:none;
       backdrop-filter: blur(10px);
     }
-
     .ctx{
       position:fixed; z-index:10000; display:none;
       min-width:170px;
@@ -265,6 +257,81 @@
     }
     .ctx button:hover{background: rgba(255,255,255,0.08)}
     .ctx button:disabled{opacity:.45; cursor:not-allowed}
+
+    /* ===== View Toggle ===== */
+    .viewtoggle { display:flex; gap:8px; align-items:center; }
+    .pill {
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.06);
+      padding:8px 10px;
+      border-radius:12px;
+      cursor:pointer;
+      user-select:none;
+      font-size:.92rem;
+    }
+    .pill.active {
+      background: rgba(96,165,250,.18);
+      border-color: rgba(96,165,250,.35);
+    }
+
+    /* ===== Grid View ===== */
+    .rows.grid {
+      display:grid;
+      gap:10px;
+      padding:10px;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      align-content:start;
+    }
+    .tile {
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      border-radius:14px;
+      overflow:hidden;
+      cursor:pointer;
+      user-select:none;
+      transition: transform .08s ease, background .08s ease;
+    }
+    .tile:hover { background: rgba(255,255,255,.06); transform: translateY(-1px); }
+    .tile.selected { outline: 2px solid rgba(96,165,250,.65); }
+    .thumb {
+      height:120px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: rgba(255,255,255,.04);
+      position:relative;
+    }
+    .thumb img, .thumb video {
+      max-width:100%;
+      max-height:100%;
+      border-radius:10px;
+    }
+    .thumb .emoji { font-size:44px; opacity:.95; }
+    .tilemeta { padding:10px; }
+    .tilemeta b {
+      display:block;
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+    }
+    .tilemeta span {
+      display:block;
+      margin-top:4px;
+      font-size:.8rem;
+      color: var(--muted);
+      font-family: var(--mono);
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+    }
+
+    /* Lazy footer */
+    .loadmore {
+      padding:12px;
+      text-align:center;
+      color: var(--muted);
+      border-top: 1px solid rgba(255,255,255,.06);
+    }
   </style>
 </head>
 
@@ -281,14 +348,20 @@
             <span id="subtitle">Online</span>
           </div>
         </div>
-        <div class="winbtns" aria-hidden="true"></div>
       </div>
 
       <div class="cmdbar">
         <button class="btn" id="openBtn" disabled>📂 Open</button>
         <button class="btn" id="upBtn">⬆️ Up</button>
         <button class="btn" id="refreshBtn">🔄 Refresh</button>
+
         <div style="flex:1"></div>
+
+        <div class="viewtoggle">
+          <div class="pill active" id="listViewBtn">☰ List</div>
+          <div class="pill" id="gridViewBtn">▦ Grid</div>
+        </div>
+
         <div class="btn" style="cursor:default; opacity:.9;">📡 <span id="net">Ready</span></div>
       </div>
 
@@ -305,8 +378,9 @@
 
         <div class="main">
           <div class="list">
-            <div class="listhead"><div>Name</div><div>Type</div><div>Date modified</div></div>
+            <div class="listhead" id="listHead"><div>Name</div><div>Type</div><div>Date modified</div></div>
             <div class="rows" id="rows" tabindex="0"></div>
+            <div class="loadmore" id="loadMore" style="display:none;">Loading more…</div>
           </div>
         </div>
 
@@ -346,6 +420,11 @@
   const sbRight = document.getElementById("sbRight");
   const net = document.getElementById("net");
 
+  const listViewBtn = document.getElementById("listViewBtn");
+  const gridViewBtn = document.getElementById("gridViewBtn");
+  const loadMoreEl  = document.getElementById("loadMore");
+  const listHead    = document.getElementById("listHead");
+
   const ctxMenu = document.getElementById("ctxMenu");
   const ctxOpen = document.getElementById("ctxOpen");
 
@@ -357,24 +436,37 @@
   ];
 
   let INDEX = null;
+
+  // Current folder items
   let items = [];
-  let filtered = [];
+
+  // Render pool (filtered current folder)
+  let renderPool = [];
   let selectedIndex = -1;
+
+  // View + lazy settings
+  let VIEW_MODE = localStorage.getItem("ND_VIEW") || "list"; // "list" | "grid"
+  let RENDER_BATCH = 120;
+  let renderCount = 0;
+  let isRendering = false;
+
+  function extLower(name){
+    const i = (name||"").lastIndexOf(".");
+    return i>=0 ? name.slice(i+1).toLowerCase() : "";
+  }
+  function isImageExt(ext){ return ["png","jpg","jpeg","webp","gif","bmp","svg"].includes(ext); }
+  function isVideoExt(ext){ return ["mp4","webm","mkv","mov"].includes(ext); }
+  function isAudioExt(ext){ return ["mp3","wav","flac","m4a","aac","ogg"].includes(ext); }
 
   function iconFor(item){
     if(item.kind === "folder") return "📁";
-    const t = (item.type || extOf(item.name) || "").toLowerCase();
-    if(["png","jpg","jpeg","webp","gif","bmp","svg"].includes(t)) return "🖼️";
-    if(["mp3","wav","flac","m4a","aac","ogg"].includes(t)) return "🎵";
-    if(["mp4","webm","mkv","mov"].includes(t)) return "🎬";
-    if(["pdf"].includes(t)) return "📕";
+    const t = (item.type || extLower(item.name) || "").toLowerCase();
+    if(isImageExt(t)) return "🖼️";
+    if(isAudioExt(t)) return "🎵";
+    if(isVideoExt(t)) return "🎬";
+    if(t === "pdf") return "📕";
     if(["txt","md","log","json","xml","yml","yaml"].includes(t)) return "📄";
     return "📦";
-  }
-
-  function extOf(name){
-    const i = name.lastIndexOf(".");
-    return i >= 0 ? name.slice(i+1) : "";
   }
 
   function fmtBytes(n){
@@ -440,7 +532,6 @@
   function nodeChildrenForPath(p){
     if(!INDEX) return [];
 
-    // Root view = show 4 top folders
     if(!p){
       return TOPS.map(t => ({
         name: t.name,
@@ -465,43 +556,16 @@
 
     const ch = (cur.children || []).map(x => ({
       ...x,
-      // ensure url exists
       url: x.url || (x.kind === "folder" ? `/${x.relPath}/` : `/${x.relPath}`),
-      // infer type (for icons)
-      type: x.kind === "folder" ? "folder" : (extOf(x.name) || "file")
+      type: x.kind === "folder" ? "folder" : (extLower(x.name) || "file")
     }));
 
-    // Sorting safety (folders first)
     ch.sort((a,b)=>{
       if(a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
 
     return ch;
-  }
-
-  async function load(){
-    hideCtx();
-    net.textContent = "Loading...";
-    sbRight.textContent = "Loading...";
-    selectedIndex = -1;
-
-    const p = currentPath();
-    buildCrumbs(p);
-
-    try{
-      INDEX = await loadIndex();
-      items = nodeChildrenForPath(p);
-      net.textContent = "OK";
-      sbRight.textContent = "Ready";
-    } catch(e){
-      items = [];
-      net.textContent = "Error";
-      sbRight.textContent = String(e);
-    }
-
-    renderTree();
-    renderRows();
   }
 
   function renderTree(){
@@ -516,23 +580,59 @@
     }
   }
 
-  function applyFilter(){
+  function applyFilterToPool(){
     const q = (searchBox.value || "").trim().toLowerCase();
-    filtered = !q ? items : items.filter(x => (x.name||"").toLowerCase().includes(q));
-    if(filtered.length === 0) selectedIndex = -1;
-    else if(selectedIndex < 0 || selectedIndex >= filtered.length) selectedIndex = 0;
+    const base = !q ? items : items.filter(x => (x.name||"").toLowerCase().includes(q));
+    return base;
+  }
+
+  function setViewMode(mode){
+    VIEW_MODE = mode;
+    localStorage.setItem("ND_VIEW", mode);
+    listViewBtn.classList.toggle("active", mode === "list");
+    gridViewBtn.classList.toggle("active", mode === "grid");
+    listHead.style.display = (mode === "list") ? "grid" : "none";
+    rowsEl.classList.toggle("grid", mode === "grid");
+    renderRows(true);
+  }
+  listViewBtn.onclick = ()=> setViewMode("list");
+  gridViewBtn.onclick = ()=> setViewMode("grid");
+
+  function renderRows(reset=false){
+    if(reset){
+      rowsEl.innerHTML = "";
+      renderCount = 0;
+      selectedIndex = -1;
+      hideCtx();
+    }
+
+    renderPool = applyFilterToPool();
+    sbLeft.textContent = `${renderPool.length} item${renderPool.length===1?"":"s"}`;
+
+    if(renderPool.length === 0){
+      loadMoreEl.style.display = "none";
+      updateDetails(null);
+      return;
+    }
+
+    renderNextBatch(true);
+  }
+
+  function highlightSelection(){
+    const children = Array.from(rowsEl.children).filter(el => el.classList.contains("row") || el.classList.contains("tile"));
+    children.forEach((el, i)=>{
+      el.classList.toggle("selected", i === selectedIndex);
+    });
+    openBtn.disabled = (selectedIndex < 0);
+    ctxOpen.disabled = (selectedIndex < 0);
   }
 
   function selectedItem(){
-    if(selectedIndex < 0 || selectedIndex >= filtered.length) return null;
-    return filtered[selectedIndex];
+    if(selectedIndex < 0 || selectedIndex >= renderPool.length) return null;
+    return renderPool[selectedIndex];
   }
 
-  function updateDetails(){
-    const it = selectedItem();
-    openBtn.disabled = !it;
-    ctxOpen.disabled = !it;
-
+  function updateDetails(it){
     if(!it){
       preview.innerHTML = `<div class="bigicon">🗂️</div><small>Select an item</small>`;
       kv.innerHTML = `
@@ -542,17 +642,31 @@
         <div class="k">Modified</div><div class="v">—</div>
         <div class="k">URL</div><div class="v">—</div>
       `;
+      openBtn.disabled = true;
+      ctxOpen.disabled = true;
       return;
     }
 
-    const ico = iconFor(it);
-    const ext = extOf(it.name).toLowerCase();
-    const isImage = it.kind === "file" && ["png","jpg","jpeg","webp","gif","bmp","svg"].includes(ext);
+    const ext = extLower(it.name);
+    const isImage = it.kind === "file" && isImageExt(ext);
+    const isVideo = it.kind === "file" && isVideoExt(ext);
+    const isAudio = it.kind === "file" && isAudioExt(ext);
 
     if(isImage){
       preview.innerHTML = `<img src="${it.url}" alt=""><small>${it.url}</small>`;
+    } else if(isVideo){
+      preview.innerHTML = `
+        <video src="${it.url}" controls preload="metadata"
+          style="width:100%;max-height:140px;border-radius:12px;border:1px solid rgba(255,255,255,.10)"></video>
+        <small>${it.url}</small>
+      `;
+    } else if(isAudio){
+      preview.innerHTML = `
+        <audio src="${it.url}" controls preload="metadata" style="width:100%"></audio>
+        <small>${it.url}</small>
+      `;
     } else {
-      preview.innerHTML = `<div class="bigicon">${ico}</div><small>${it.url}</small>`;
+      preview.innerHTML = `<div class="bigicon">${iconFor(it)}</div><small>${it.url}</small>`;
     }
 
     kv.innerHTML = `
@@ -562,64 +676,180 @@
       <div class="k">Modified</div><div class="v">${fmtDate(it.mtimeMs)}</div>
       <div class="k">URL</div><div class="v" title="${it.url}">${it.url}</div>
     `;
-  }
 
-  function renderRows(){
-    rowsEl.innerHTML = "";
-    applyFilter();
-
-    filtered.forEach((e, idx)=>{
-      const row = document.createElement("div");
-      row.className = "row" + (idx === selectedIndex ? " selected" : "");
-      row.innerHTML = `
-        <div class="cellname">
-          <div class="fileicon">${iconFor(e)}</div>
-          <div class="nametext">
-            <b>${e.name}</b>
-            <span>${e.url}</span>
-          </div>
-        </div>
-        <div class="type">${e.kind === "folder" ? "File folder" : (extOf(e.name) || "file")}</div>
-        <div class="modified">${fmtDate(e.mtimeMs)}</div>
-      `;
-
-      row.addEventListener("click", ()=>{
-        selectedIndex = idx;
-        hideCtx();
-        renderRows();
-      });
-
-      row.addEventListener("dblclick", ()=>{
-        selectedIndex = idx;
-        hideCtx();
-        openSelected();
-      });
-
-      row.addEventListener("contextmenu", (ev)=>{
-        ev.preventDefault();
-        selectedIndex = idx;
-        renderRows();
-        showCtx(ev.clientX, ev.clientY);
-      });
-
-      rowsEl.appendChild(row);
-    });
-
-    sbLeft.textContent = `${filtered.length} item${filtered.length===1?"":"s"}`;
-    updateDetails();
+    openBtn.disabled = false;
+    ctxOpen.disabled = false;
   }
 
   function openSelected(){
     const it = selectedItem();
     if(!it) return;
-
     if(it.kind === "folder"){
-      const newPath = it.relPath.replace(/\/+$/, "");
-      setPath(newPath);
+      setPath(it.relPath.replace(/\/+$/, ""));
     } else {
       window.open(it.url, "_blank", "noopener");
     }
   }
+
+  function renderNextBatch(first=false){
+    if(isRendering) return;
+    isRendering = true;
+
+    const target = Math.min(renderPool.length, renderCount + RENDER_BATCH);
+    loadMoreEl.style.display = (renderCount < renderPool.length) ? "block" : "none";
+
+    const frag = document.createDocumentFragment();
+
+    for(let idx = renderCount; idx < target; idx++){
+      const e = renderPool[idx];
+
+      if(VIEW_MODE === "list"){
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `
+          <div class="cellname">
+            <div class="fileicon">${iconFor(e)}</div>
+            <div class="nametext">
+              <b>${e.name}</b>
+              <span>${e.url}</span>
+            </div>
+          </div>
+          <div class="type">${e.kind === "folder" ? "File folder" : (extLower(e.name) || "file")}</div>
+          <div class="modified">${fmtDate(e.mtimeMs)}</div>
+        `;
+
+        row.addEventListener("click", ()=>{
+          selectedIndex = idx;
+          hideCtx();
+          highlightSelection();
+          updateDetails(selectedItem());
+        });
+        row.addEventListener("dblclick", ()=>{
+          selectedIndex = idx;
+          hideCtx();
+          highlightSelection();
+          updateDetails(selectedItem());
+          openSelected();
+        });
+        row.addEventListener("contextmenu", (ev)=>{
+          ev.preventDefault();
+          selectedIndex = idx;
+          highlightSelection();
+          updateDetails(selectedItem());
+          showCtx(ev.clientX, ev.clientY);
+        });
+
+        frag.appendChild(row);
+      } else {
+        const tile = document.createElement("div");
+        tile.className = "tile";
+
+        const ext = extLower(e.name);
+        const isImg = e.kind==="file" && isImageExt(ext);
+        const isVid = e.kind==="file" && isVideoExt(ext);
+
+        // NOTE: video thumbs can be heavy. If you want faster grid, change isVid handling to emoji.
+        let thumbHTML = `<div class="emoji">${iconFor(e)}</div>`;
+        if(isImg){
+          thumbHTML = `<img src="${e.url}" loading="lazy" alt="">`;
+        } else if(isVid){
+          thumbHTML = `<video src="${e.url}" muted preload="metadata"></video>`;
+        }
+
+        tile.innerHTML = `
+          <div class="thumb">${thumbHTML}</div>
+          <div class="tilemeta">
+            <b title="${e.name}">${e.name}</b>
+            <span title="${e.url}">${e.url}</span>
+          </div>
+        `;
+
+        tile.addEventListener("click", ()=>{
+          selectedIndex = idx;
+          hideCtx();
+          highlightSelection();
+          updateDetails(selectedItem());
+        });
+        tile.addEventListener("dblclick", ()=>{
+          selectedIndex = idx;
+          hideCtx();
+          highlightSelection();
+          updateDetails(selectedItem());
+          openSelected();
+        });
+        tile.addEventListener("contextmenu", (ev)=>{
+          ev.preventDefault();
+          selectedIndex = idx;
+          highlightSelection();
+          updateDetails(selectedItem());
+          showCtx(ev.clientX, ev.clientY);
+        });
+
+        frag.appendChild(tile);
+      }
+    }
+
+    rowsEl.appendChild(frag);
+
+    // first render: auto-select first item
+    if(first){
+      if(selectedIndex < 0 && renderPool.length > 0) selectedIndex = 0;
+      highlightSelection();
+      updateDetails(selectedItem());
+    } else {
+      highlightSelection();
+    }
+
+    renderCount = target;
+    loadMoreEl.style.display = (renderCount < renderPool.length) ? "block" : "none";
+    isRendering = false;
+  }
+
+  function showCtx(x,y){
+    ctxMenu.style.display = "block";
+    const pad=8;
+    const w=ctxMenu.offsetWidth, h=ctxMenu.offsetHeight;
+    ctxMenu.style.left = Math.max(pad, Math.min(x, innerWidth-w-pad)) + "px";
+    ctxMenu.style.top  = Math.max(pad, Math.min(y, innerHeight-h-pad)) + "px";
+    ctxOpen.disabled = !selectedItem();
+  }
+  function hideCtx(){ ctxMenu.style.display = "none"; }
+  ctxOpen.onclick = ()=>{ hideCtx(); openSelected(); };
+  document.addEventListener("click", (ev)=>{ if(!ev.target.closest(".ctx")) hideCtx(); });
+  window.addEventListener("resize", hideCtx);
+
+  // Lazy loading: when near bottom, render next batch
+  rowsEl.addEventListener("scroll", ()=>{
+    const nearBottom = rowsEl.scrollTop + rowsEl.clientHeight >= rowsEl.scrollHeight - 240;
+    if(nearBottom && renderCount < renderPool.length){
+      renderNextBatch(false);
+    }
+  });
+
+  // Keyboard navigation (works in list/grid)
+  rowsEl.addEventListener("keydown", (ev)=>{
+    if(renderPool.length === 0) return;
+    if(ev.key === "ArrowDown"){
+      ev.preventDefault();
+      selectedIndex = Math.min(renderPool.length-1, selectedIndex + 1);
+      // ensure selected is rendered
+      while(renderCount <= selectedIndex && renderCount < renderPool.length) renderNextBatch(false);
+      highlightSelection();
+      updateDetails(selectedItem());
+    } else if(ev.key === "ArrowUp"){
+      ev.preventDefault();
+      selectedIndex = Math.max(0, selectedIndex - 1);
+      highlightSelection();
+      updateDetails(selectedItem());
+    } else if(ev.key === "Enter"){
+      ev.preventDefault();
+      openSelected();
+    }
+  });
+
+  // Buttons
+  openBtn.onclick = openSelected;
+  refreshBtn.onclick = load;
 
   upBtn.onclick = ()=>{
     const p = currentPath();
@@ -629,45 +859,39 @@
     setPath(parts.join("/"));
   };
 
-  openBtn.onclick = openSelected;
-  refreshBtn.onclick = load;
-
   searchBox.addEventListener("input", ()=>{
-    selectedIndex = -1;
-    renderRows();
+    renderRows(true);
   });
-
-  rowsEl.addEventListener("keydown", (ev)=>{
-    if(filtered.length === 0) return;
-    if(ev.key === "ArrowDown"){
-      ev.preventDefault();
-      selectedIndex = Math.min(filtered.length-1, selectedIndex + 1);
-      renderRows();
-    } else if(ev.key === "ArrowUp"){
-      ev.preventDefault();
-      selectedIndex = Math.max(0, selectedIndex - 1);
-      renderRows();
-    } else if(ev.key === "Enter"){
-      ev.preventDefault();
-      openSelected();
-    }
-  });
-
-  function showCtx(x,y){
-    ctxMenu.style.display = "block";
-    const pad=8;
-    const w=ctxMenu.offsetWidth, h=ctxMenu.offsetHeight;
-    ctxMenu.style.left = Math.max(pad, Math.min(x, innerWidth-w-pad)) + "px";
-    ctxMenu.style.top  = Math.max(pad, Math.min(y, innerHeight-h-pad)) + "px";
-    updateDetails();
-  }
-  function hideCtx(){ ctxMenu.style.display = "none"; }
-
-  ctxOpen.onclick = ()=>{ hideCtx(); openSelected(); };
-  document.addEventListener("click", (ev)=>{ if(!ev.target.closest(".ctx")) hideCtx(); });
-  window.addEventListener("resize", hideCtx);
 
   window.addEventListener("popstate", load);
+
+  async function load(){
+    hideCtx();
+    net.textContent = "Loading...";
+    sbRight.textContent = "Loading...";
+    selectedIndex = -1;
+
+    const p = currentPath();
+    buildCrumbs(p);
+
+    try{
+      INDEX = await loadIndex();
+      items = nodeChildrenForPath(p);
+      renderTree();
+      renderRows(true);
+      net.textContent = "OK";
+      sbRight.textContent = "Ready";
+    } catch(e){
+      items = [];
+      renderTree();
+      renderRows(true);
+      net.textContent = "Error";
+      sbRight.textContent = String(e);
+    }
+  }
+
+  // Initialize view mode then load
+  setViewMode(VIEW_MODE);
   load();
 </script>
 </body>
