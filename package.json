@@ -2,16 +2,17 @@
   "name": "noxiustdrive",
   "version": "1.0.0",
   "private": true,
+  "description": "NoxiustDrive - a Windows-like private drive UI hosted on Vercel (Next.js) with folder ZIP downloads.",
   "scripts": {
-    "predev": "node scripts/build-index.js",
     "dev": "next dev",
-    "prebuild": "node scripts/build-index.js",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "next": "14.2.5",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "archiver": "^7.0.1",
+    "next": "^14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }
