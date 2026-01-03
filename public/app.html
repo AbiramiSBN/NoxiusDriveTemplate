@@ -92,6 +92,7 @@
       color: rgba(255,255,255,.78);
       font-size: .9rem;
       min-height: 1.1em;
+      white-space:pre-wrap;
     }
 
     /* ===== App Shell ===== */
@@ -276,7 +277,6 @@
       display:flex; flex-direction:column;
     }
 
-    /* List has Download column */
     .listhead{
       display:grid;
       grid-template-columns: 1.35fr .70fr .85fr 96px;
@@ -502,61 +502,66 @@
     .ctx button:hover{background: rgba(255,255,255,0.08)}
     .ctx button:disabled{opacity:.45; cursor:not-allowed}
 
-    /* ===== Terminal Drawer ===== */
-    .terminal{
-      position:absolute;
-      left:12px; right:12px;
-      bottom:46px;
-      height:200px;
+    /* ===== Zip overlay ===== */
+    .zipOverlay{
+      position:fixed; inset:0; z-index:20000;
       display:none;
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.72);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      overflow:hidden;
-      box-shadow: 0 20px 70px rgba(0,0,0,.65);
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      align-items:center; justify-content:center;
+      padding: 18px;
     }
-    .termhdr{
-      padding:8px 10px;
-      border-bottom:1px solid rgba(255,255,255,.12);
-      color:rgba(255,255,255,.75);
-      font-family: var(--mono);
-      font-size:.9rem;
-      display:flex; align-items:center; justify-content:space-between;
-      user-select:none;
+    .zipCard{
+      width:min(620px, 94vw);
+      border-radius: 22px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(10,12,18,.70);
+      box-shadow: 0 40px 120px rgba(0,0,0,.75);
+      padding: 16px 16px 14px;
     }
-    .termhdr button{
+    .zipTitle{
+      font-weight:800; font-size:1.05rem;
+      display:flex; justify-content:space-between; gap:10px; align-items:center;
+    }
+    .zipTitle span{color: var(--muted); font-family: var(--mono); font-weight:600; font-size:.85rem}
+    .zipBarOuter{
+      margin-top: 12px;
+      height: 14px;
+      border-radius: 999px;
       border:1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.9);
-      padding: 6px 10px;
-      border-radius: 12px;
-      cursor:pointer;
-      font-family: var(--mono);
-      font-size:.85rem;
+      overflow:hidden;
     }
-    .termhdr button:hover{background: rgba(255,255,255,.10)}
-    .termout{
-      padding:8px 10px;
-      height:calc(100% - 70px);
-      overflow:auto;
+    .zipBar{
+      height:100%;
+      width:0%;
+      background: rgba(96,165,250,.65);
+      border-right: 1px solid rgba(255,255,255,.18);
+      transition: width .12s ease;
+    }
+    .zipMsg{
+      margin-top: 10px;
+      color: rgba(255,255,255,.78);
+      font-size: .9rem;
+      font-family: var(--mono);
       white-space:pre-wrap;
-      color:rgba(255,255,255,.88);
-      font-family: var(--mono);
-      font-size:.9rem;
+      min-height: 2.2em;
     }
-    .termin{
-      width:100%;
-      border:0;
-      outline:none;
-      padding:10px;
-      background:rgba(255,255,255,.06);
-      color:white;
-      font-family:var(--mono);
-      font-size:.95rem;
+    .zipBtns{
+      margin-top: 12px;
+      display:flex; gap:10px; justify-content:flex-end;
     }
-    .termin::placeholder{color: rgba(255,255,255,.45)}
+    .zipBtns button{
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      color: var(--text);
+      padding: 10px 14px;
+      cursor:pointer;
+      font-weight: 800;
+    }
+    .zipBtns button:hover{background: rgba(255,255,255,.14)}
   </style>
 </head>
 
@@ -575,6 +580,21 @@
         <button class="lockbtn" id="unlockBtn">Unlock</button>
       </div>
       <div class="lockmsg" id="lockMsg"></div>
+    </div>
+  </div>
+
+  <!-- ZIP progress overlay -->
+  <div class="zipOverlay" id="zipOverlay">
+    <div class="zipCard">
+      <div class="zipTitle">
+        <div>Creating ZIP…</div>
+        <span id="zipPct">0%</span>
+      </div>
+      <div class="zipBarOuter"><div class="zipBar" id="zipBar"></div></div>
+      <div class="zipMsg" id="zipMsg">Preparing…</div>
+      <div class="zipBtns">
+        <button id="zipCancelBtn">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -649,599 +669,742 @@
 
   <div class="ctx" id="ctxMenu"><button id="ctxOpen" disabled>Open</button></div>
 
-<script>
-  // ===== DOM =====
-  const rowsEl = document.getElementById("rows");
-  const searchBox = document.getElementById("searchBox");
-  const openBtn = document.getElementById("openBtn");
-  const refreshBtn = document.getElementById("refreshBtn");
-  const upBtn = document.getElementById("upBtn");
-  const backBtn = document.getElementById("backBtn");
-  const fwdBtn = document.getElementById("fwdBtn");
-  const addrEl = document.getElementById("addr");
-  const placesEl = document.getElementById("places");
-  const preview = document.getElementById("preview");
-  const kv = document.getElementById("kv");
-  const sbLeft = document.getElementById("sbLeft");
-  const sbRight = document.getElementById("sbRight");
-  const net = document.getElementById("net");
-  const subtitle = document.getElementById("subtitle");
+  <!-- ZIP logic (client-side) -->
+  <script type="module">
+    import { zipSync, strToU8 } from "https://cdn.jsdelivr.net/npm/fflate@0.8.2/esm/browser.js";
 
-  const listViewBtn = document.getElementById("listViewBtn");
-  const gridViewBtn = document.getElementById("gridViewBtn");
-  const loadMoreEl  = document.getElementById("loadMore");
-  const listHead    = document.getElementById("listHead");
+    // UI hooks
+    const zipOverlay = document.getElementById("zipOverlay");
+    const zipBar = document.getElementById("zipBar");
+    const zipPct = document.getElementById("zipPct");
+    const zipMsg = document.getElementById("zipMsg");
+    const zipCancelBtn = document.getElementById("zipCancelBtn");
 
-  const ctxMenu = document.getElementById("ctxMenu");
-  const ctxOpen = document.getElementById("ctxOpen");
+    let zipAbort = { aborted:false };
 
-  const logoutBtn = document.getElementById("logoutBtn");
-  const lock = document.getElementById("lock");
-  const lockPass = document.getElementById("lockPass");
-  const unlockBtn = document.getElementById("unlockBtn");
-  const lockMsg = document.getElementById("lockMsg");
-  const lockHint = document.getElementById("lockHint");
-
-  // ===== Places =====
-  const TOPS = [
-    { key:"documents", name:"Documents", icon:"📄" },
-    { key:"music",     name:"Music",     icon:"🎵" },
-    { key:"pictures",  name:"Pictures",  icon:"🖼️" },
-    { key:"videos",    name:"Videos",    icon:"🎬" },
-  ];
-
-  // ===== State =====
-  let INDEX = null;
-  let items = [];
-  let renderPool = [];
-  let selectedIndex = -1;
-
-  let VIEW_MODE = localStorage.getItem("ND_VIEW") || "list"; // list|grid
-  let RENDER_BATCH = 140;
-  let renderCount = 0;
-  let isRendering = false;
-
-  // client-side lock
-  const LOCK_KEY = "ND_LOCK_HASH_V1";
-  let lockHash = localStorage.getItem(LOCK_KEY) || null;
-
-  // ===== Utils =====
-  function extLower(name){
-    const i = (name||"").lastIndexOf(".");
-    return i>=0 ? name.slice(i+1).toLowerCase() : "";
-  }
-  function isImageExt(ext){ return ["png","jpg","jpeg","webp","gif","bmp","svg"].includes(ext); }
-  function isVideoExt(ext){ return ["mp4","webm","mkv","mov"].includes(ext); }
-  function isAudioExt(ext){ return ["mp3","wav","flac","m4a","aac","ogg"].includes(ext); }
-
-  function iconFor(item){
-    if(item.kind === "folder") return "📁";
-    const t = extLower(item.name);
-    if(isImageExt(t)) return "🖼️";
-    if(isAudioExt(t)) return "🎵";
-    if(isVideoExt(t)) return "🎬";
-    if(t === "pdf") return "📕";
-    if(["txt","md","log","json","xml","yml","yaml"].includes(t)) return "📄";
-    return "📦";
-  }
-
-  function fmtBytes(n){
-    if(!n) return "—";
-    const u = ["B","KB","MB","GB","TB"];
-    let i=0, x=n;
-    while(x>=1024 && i<u.length-1){ x/=1024; i++; }
-    return `${x.toFixed(i?1:0)} ${u[i]}`;
-  }
-  function fmtDate(ms){
-    if(!ms) return "—";
-    return new Date(ms).toLocaleString();
-  }
-
-  function currentPath(){
-    const p = new URLSearchParams(location.search).get("path") || "";
-    return p.replace(/^\/+/, "").replace(/\/+$/, "");
-  }
-  function setPath(p){
-    const url = new URL(location.href);
-    if(p) url.searchParams.set("path", p);
-    else url.searchParams.delete("path");
-    history.pushState({}, "", url);
-    load();
-  }
-
-  function buildCrumbs(pathStr){
-    addrEl.innerHTML = "";
-    const parts = pathStr ? pathStr.split("/") : [];
-    const crumbs = [{ label: "This PC", path: "" }];
-    let acc = "";
-    for(const part of parts){
-      acc = acc ? `${acc}/${part}` : part;
-      crumbs.push({ label: part, path: acc });
+    function showZipUI(){
+      zipAbort = { aborted:false };
+      zipBar.style.width = "0%";
+      zipPct.textContent = "0%";
+      zipMsg.textContent = "Preparing…";
+      zipOverlay.style.display = "flex";
     }
-    crumbs.forEach((c, i)=>{
-      const el = document.createElement("span");
-      el.className = "crumb";
-      el.textContent = c.label;
-      el.onclick = ()=> setPath(c.path);
-      addrEl.appendChild(el);
-      if(i < crumbs.length - 1){
-        const sep = document.createElement("span");
-        sep.className = "sep";
-        sep.textContent = "›";
-        addrEl.appendChild(sep);
+    function hideZipUI(){
+      zipOverlay.style.display = "none";
+    }
+    function setZipProgress(pct, msg){
+      const clamped = Math.max(0, Math.min(100, pct|0));
+      zipBar.style.width = clamped + "%";
+      zipPct.textContent = clamped + "%";
+      if(msg) zipMsg.textContent = msg;
+    }
+
+    zipCancelBtn.onclick = ()=>{
+      zipAbort.aborted = true;
+      zipMsg.textContent = "Canceling…";
+    };
+
+    function sanitizeZipPath(p){
+      return String(p || "")
+        .replace(/^\/+/, "")
+        .replace(/\.\./g, "_")
+        .replace(/\\/g, "/");
+    }
+
+    async function fetchAsUint8(url){
+      const r = await fetch(url);
+      if(!r.ok) throw new Error("Failed: " + url);
+      const buf = await r.arrayBuffer();
+      return new Uint8Array(buf);
+    }
+
+    // Find a node in _index.json tree by relPath
+    function findNode(children, rel){
+      for(const n of (children || [])){
+        if(n.relPath === rel) return n;
+        if(n.kind === "folder" && n.children){
+          const got = findNode(n.children, rel);
+          if(got) return got;
+        }
       }
-    });
-  }
-
-  async function loadIndex(){
-    const r = await fetch(`/_index.json?ts=${Date.now()}`, { cache: "no-store" });
-    if(!r.ok) throw new Error(`Failed to load /_index.json (${r.status})`);
-    return await r.json();
-  }
-
-  function getFolderNode(pathStr){
-    if(!INDEX) return null;
-    const p = (pathStr || "").replace(/^\/+/, "").replace(/\/+$/, "");
-    if(!p) return { kind:"root", children: TOPS.map(t => ({ kind:"folder", name:t.name, relPath:t.key, children: INDEX.tree?.[t.key] || [] })) };
-
-    const parts = p.split("/").filter(Boolean);
-    const root = parts.shift();
-    if(!INDEX.tree || !(root in INDEX.tree)) return null;
-
-    let cur = { kind:"folder", name: root, relPath: root, children: INDEX.tree[root] || [] };
-    for(const part of parts){
-      const next = (cur.children || []).find(x => x.kind === "folder" && x.name === part);
-      if(!next) return null;
-      cur = next;
+      return null;
     }
-    return cur;
-  }
 
-  function nodeChildrenForPath(p){
-    if(!INDEX) return [];
+    async function zipFolderClient(folderRelPath, folderName){
+      showZipUI();
 
-    const norm = (p||"").replace(/^\/+/, "").replace(/\/+$/, "");
-    if(!norm){
-      return TOPS.map(t => ({
-        name: t.name,
-        kind: "folder",
-        size: 0,
-        mtimeMs: INDEX.generatedAt || 0,
-        relPath: t.key,
-        url: `/${t.key}/`,
-        children: INDEX.tree?.[t.key] || []
+      try{
+        setZipProgress(1, `Loading index…`);
+        const idx = await (await fetch(`/_index.json?ts=${Date.now()}`, {cache:"no-store"})).json();
+
+        const top = folderRelPath.split("/")[0];
+        const rootKids = idx.tree?.[top] || [];
+
+        const node = (folderRelPath === top)
+          ? { kind:"folder", relPath: top, children: rootKids }
+          : findNode(rootKids, folderRelPath);
+
+        if(!node || node.kind !== "folder") throw new Error("Folder not found in index");
+
+        // Flatten all files
+        const files = [];
+        (function walk(n){
+          for(const c of (n.children || [])){
+            if(c.kind === "file") files.push(c);
+            else if(c.kind === "folder") walk(c);
+          }
+        })(node);
+
+        if(files.length === 0){
+          throw new Error("Folder is empty.");
+        }
+
+        // Build ZIP entries
+        const zipObj = {};
+        zipObj["README.txt"] = strToU8(
+          `Zipped from NoxiustDrive\nFolder: ${folderRelPath}\nFiles: ${files.length}\n`
+        );
+
+        // Download each file then zip
+        for(let i=0;i<files.length;i++){
+          if(zipAbort.aborted) throw new Error("Canceled");
+
+          const f = files[i];
+          const fileUrl = "/" + f.relPath; // public path
+          const inside = sanitizeZipPath(
+            f.relPath.startsWith(folderRelPath + "/")
+              ? f.relPath.slice((folderRelPath + "/").length)
+              : f.name
+          );
+
+          const pct = Math.floor((i / files.length) * 90); // 0..90 while downloading
+          setZipProgress(pct, `Downloading ${i+1}/${files.length}\n${inside}`);
+
+          const data = await fetchAsUint8(fileUrl);
+          zipObj[inside] = data;
+        }
+
+        if(zipAbort.aborted) throw new Error("Canceled");
+
+        setZipProgress(95, "Compressing…");
+        const zipped = zipSync(zipObj, { level: 6 });
+
+        setZipProgress(100, "Saving…");
+        const blob = new Blob([zipped], { type:"application/zip" });
+
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = (folderName || "folder") + ".zip";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+
+        hideZipUI();
+      } catch(e){
+        setZipProgress(100, "Failed:\n" + String(e?.message || e));
+        // leave overlay visible for a moment so you can read it
+        setTimeout(hideZipUI, 1800);
+        throw e;
+      }
+    }
+
+    // Expose globally so main script can call it
+    window.downloadFolderZip = zipFolderClient;
+  </script>
+
+  <!-- Main app logic -->
+  <script>
+    // ===== DOM =====
+    const rowsEl = document.getElementById("rows");
+    const searchBox = document.getElementById("searchBox");
+    const openBtn = document.getElementById("openBtn");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const upBtn = document.getElementById("upBtn");
+    const backBtn = document.getElementById("backBtn");
+    const fwdBtn = document.getElementById("fwdBtn");
+    const addrEl = document.getElementById("addr");
+    const placesEl = document.getElementById("places");
+    const preview = document.getElementById("preview");
+    const kv = document.getElementById("kv");
+    const sbLeft = document.getElementById("sbLeft");
+    const sbRight = document.getElementById("sbRight");
+    const net = document.getElementById("net");
+    const subtitle = document.getElementById("subtitle");
+
+    const listViewBtn = document.getElementById("listViewBtn");
+    const gridViewBtn = document.getElementById("gridViewBtn");
+    const loadMoreEl  = document.getElementById("loadMore");
+    const listHead    = document.getElementById("listHead");
+
+    const ctxMenu = document.getElementById("ctxMenu");
+    const ctxOpen = document.getElementById("ctxOpen");
+
+    const logoutBtn = document.getElementById("logoutBtn");
+    const lock = document.getElementById("lock");
+    const lockPass = document.getElementById("lockPass");
+    const unlockBtn = document.getElementById("unlockBtn");
+    const lockMsg = document.getElementById("lockMsg");
+    const lockHint = document.getElementById("lockHint");
+
+    // ===== Places =====
+    const TOPS = [
+      { key:"documents", name:"Documents", icon:"📄" },
+      { key:"music",     name:"Music",     icon:"🎵" },
+      { key:"pictures",  name:"Pictures",  icon:"🖼️" },
+      { key:"videos",    name:"Videos",    icon:"🎬" },
+    ];
+
+    // ===== State =====
+    let INDEX = null;
+    let items = [];
+    let renderPool = [];
+    let selectedIndex = -1;
+
+    let VIEW_MODE = localStorage.getItem("ND_VIEW") || "list"; // list|grid
+    let RENDER_BATCH = 140;
+    let renderCount = 0;
+    let isRendering = false;
+
+    // client-side lock
+    const LOCK_KEY = "ND_LOCK_HASH_V1";
+    let lockHash = localStorage.getItem(LOCK_KEY) || null;
+
+    // ===== Utils =====
+    function extLower(name){
+      const i = (name||"").lastIndexOf(".");
+      return i>=0 ? name.slice(i+1).toLowerCase() : "";
+    }
+    function isImageExt(ext){ return ["png","jpg","jpeg","webp","gif","bmp","svg"].includes(ext); }
+    function isVideoExt(ext){ return ["mp4","webm","mkv","mov"].includes(ext); }
+    function isAudioExt(ext){ return ["mp3","wav","flac","m4a","aac","ogg"].includes(ext); }
+
+    function iconFor(item){
+      if(item.kind === "folder") return "📁";
+      const t = extLower(item.name);
+      if(isImageExt(t)) return "🖼️";
+      if(isAudioExt(t)) return "🎵";
+      if(isVideoExt(t)) return "🎬";
+      if(t === "pdf") return "📕";
+      if(["txt","md","log","json","xml","yml","yaml"].includes(t)) return "📄";
+      return "📦";
+    }
+
+    function fmtBytes(n){
+      if(!n) return "—";
+      const u = ["B","KB","MB","GB","TB"];
+      let i=0, x=n;
+      while(x>=1024 && i<u.length-1){ x/=1024; i++; }
+      return `${x.toFixed(i?1:0)} ${u[i]}`;
+    }
+    function fmtDate(ms){
+      if(!ms) return "—";
+      return new Date(ms).toLocaleString();
+    }
+
+    function currentPath(){
+      const p = new URLSearchParams(location.search).get("path") || "";
+      return p.replace(/^\/+/, "").replace(/\/+$/, "");
+    }
+    function setPath(p){
+      const url = new URL(location.href);
+      if(p) url.searchParams.set("path", p);
+      else url.searchParams.delete("path");
+      history.pushState({}, "", url);
+      load();
+    }
+
+    function buildCrumbs(pathStr){
+      addrEl.innerHTML = "";
+      const parts = pathStr ? pathStr.split("/") : [];
+      const crumbs = [{ label: "This PC", path: "" }];
+      let acc = "";
+      for(const part of parts){
+        acc = acc ? `${acc}/${part}` : part;
+        crumbs.push({ label: part, path: acc });
+      }
+      crumbs.forEach((c, i)=>{
+        const el = document.createElement("span");
+        el.className = "crumb";
+        el.textContent = c.label;
+        el.onclick = ()=> setPath(c.path);
+        addrEl.appendChild(el);
+        if(i < crumbs.length - 1){
+          const sep = document.createElement("span");
+          sep.className = "sep";
+          sep.textContent = "›";
+          addrEl.appendChild(sep);
+        }
+      });
+    }
+
+    async function loadIndex(){
+      const r = await fetch(`/_index.json?ts=${Date.now()}`, { cache: "no-store" });
+      if(!r.ok) throw new Error(`Failed to load /_index.json (${r.status})`);
+      return await r.json();
+    }
+
+    function getFolderNode(pathStr){
+      if(!INDEX) return null;
+      const p = (pathStr || "").replace(/^\/+/, "").replace(/\/+$/, "");
+      if(!p) return { kind:"root", children: TOPS.map(t => ({ kind:"folder", name:t.name, relPath:t.key, children: INDEX.tree?.[t.key] || [] })) };
+
+      const parts = p.split("/").filter(Boolean);
+      const root = parts.shift();
+      if(!INDEX.tree || !(root in INDEX.tree)) return null;
+
+      let cur = { kind:"folder", name: root, relPath: root, children: INDEX.tree[root] || [] };
+      for(const part of parts){
+        const next = (cur.children || []).find(x => x.kind === "folder" && x.name === part);
+        if(!next) return null;
+        cur = next;
+      }
+      return cur;
+    }
+
+    function nodeChildrenForPath(p){
+      if(!INDEX) return [];
+
+      const norm = (p||"").replace(/^\/+/, "").replace(/\/+$/, "");
+      if(!norm){
+        return TOPS.map(t => ({
+          name: t.name,
+          kind: "folder",
+          size: 0,
+          mtimeMs: INDEX.generatedAt || 0,
+          relPath: t.key,
+          url: `/${t.key}/`,
+          children: INDEX.tree?.[t.key] || []
+        }));
+      }
+
+      const node = getFolderNode(norm);
+      if(!node) return [];
+
+      const ch = (node.children || []).map(x => ({
+        ...x,
+        url: x.url || (x.kind === "folder" ? `/${x.relPath}/` : `/${x.relPath}`)
       }));
+
+      ch.sort((a,b)=>{
+        if(a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      return ch;
     }
 
-    const node = getFolderNode(norm);
-    if(!node) return [];
-
-    const ch = (node.children || []).map(x => ({
-      ...x,
-      url: x.url || (x.kind === "folder" ? `/${x.relPath}/` : `/${x.relPath}`)
-    }));
-
-    ch.sort((a,b)=>{
-      if(a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
-
-    return ch;
-  }
-
-  function renderPlaces(){
-    const p = currentPath();
-    const root = p.split("/")[0] || "";
-    placesEl.innerHTML = "";
-    for(const t of TOPS){
-      const el = document.createElement("div");
-      el.className = "place" + (root === t.key ? " active" : "");
-      el.innerHTML = `
-        <div class="picon">${t.icon}</div>
-        <div class="plabel">
-          <b>${t.name}</b>
-          <span>/${t.key}/</span>
-        </div>
-      `;
-      el.onclick = ()=> setPath(t.key);
-      placesEl.appendChild(el);
-    }
-  }
-
-  // ===== Download helpers (FILES + FOLDERS) =====
-  function downloadUrl(url, filename){
-    const a = document.createElement("a");
-    a.href = url;
-    if (filename) a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
-
-  // Folder ZIP download via Vercel serverless route
-  function downloadFolderZip(folderRelPath, folderDisplayName){
-    const url = `/api/zip?path=${encodeURIComponent(folderRelPath)}`;
-    downloadUrl(url, (folderDisplayName || "folder") + ".zip");
-  }
-
-  function downloadItem(it){
-    if(!it) return;
-    if(it.kind === "folder"){
-      downloadFolderZip(it.relPath, it.name);
-    } else {
-      downloadUrl(it.url, it.name);
-    }
-  }
-
-  // ===== Search (case-insensitive) =====
-  function applyFilterToPool(){
-    const q = (searchBox.value || "").trim().toLocaleLowerCase();
-    if(!q) return items;
-    return items.filter(x => (x.name || "").toLocaleLowerCase().includes(q));
-  }
-
-  // ===== View =====
-  function setViewMode(mode){
-    VIEW_MODE = mode;
-    localStorage.setItem("ND_VIEW", mode);
-    listViewBtn.classList.toggle("active", mode === "list");
-    gridViewBtn.classList.toggle("active", mode === "grid");
-    listHead.style.display = (mode === "list") ? "grid" : "none";
-    rowsEl.classList.toggle("grid", mode === "grid");
-    renderRows(true);
-  }
-
-  function renderRows(reset=false){
-    if(reset){
-      rowsEl.innerHTML = "";
-      renderCount = 0;
-      selectedIndex = -1;
-      hideCtx();
-    }
-
-    renderPool = applyFilterToPool();
-    sbLeft.textContent = `${renderPool.length} item${renderPool.length===1?"":"s"}`;
-
-    if(renderPool.length === 0){
-      loadMoreEl.style.display = "none";
-      updateDetails(null);
-      openBtn.disabled = true;
-      ctxOpen.disabled = true;
-      return;
-    }
-
-    renderNextBatch(true);
-  }
-
-  function highlightSelection(){
-    const children = Array.from(rowsEl.children).filter(el => el.classList.contains("row") || el.classList.contains("tile"));
-    children.forEach((el, i)=> el.classList.toggle("selected", i === selectedIndex));
-    const has = !!selectedItem();
-    openBtn.disabled = !has;
-    ctxOpen.disabled = !has;
-  }
-
-  function selectedItem(){
-    if(selectedIndex < 0 || selectedIndex >= renderPool.length) return null;
-    return renderPool[selectedIndex];
-  }
-
-  function updateDetails(it){
-    if(!it){
-      preview.innerHTML = `<div class="bigicon">🗂️</div><small>Select an item</small>`;
-      kv.innerHTML = `
-        <div class="k">Name</div><div class="v">—</div>
-        <div class="k">Type</div><div class="v">—</div>
-        <div class="k">Size</div><div class="v">—</div>
-        <div class="k">Modified</div><div class="v">—</div>
-        <div class="k">URL</div><div class="v">—</div>
-      `;
-      return;
-    }
-
-    const ext = extLower(it.name);
-    const isImg = it.kind === "file" && isImageExt(ext);
-    const isVid = it.kind === "file" && isVideoExt(ext);
-    const isAud = it.kind === "file" && isAudioExt(ext);
-
-    if(isImg){
-      preview.innerHTML = `<img src="${it.url}" alt=""><small>${it.url}</small>`;
-    } else if(isVid){
-      preview.innerHTML = `
-        <video src="${it.url}" controls preload="metadata"
-          style="width:100%;max-height:150px;border-radius:14px;border:1px solid rgba(255,255,255,.10)"></video>
-        <small>${it.url}</small>
-      `;
-    } else if(isAud){
-      preview.innerHTML = `
-        <audio src="${it.url}" controls preload="metadata" style="width:100%"></audio>
-        <small>${it.url}</small>
-      `;
-    } else {
-      preview.innerHTML = `<div class="bigicon">${iconFor(it)}</div><small>${it.url}</small>`;
-    }
-
-    kv.innerHTML = `
-      <div class="k">Name</div><div class="v" title="${it.name}">${it.name}</div>
-      <div class="k">Type</div><div class="v">${it.kind === "folder" ? "Folder" : (ext || "file")}</div>
-      <div class="k">Size</div><div class="v">${it.kind === "folder" ? "—" : fmtBytes(it.size)}</div>
-      <div class="k">Modified</div><div class="v">${fmtDate(it.mtimeMs)}</div>
-      <div class="k">URL</div><div class="v" title="${it.url}">${it.url}</div>
-    `;
-  }
-
-  function openSelected(){
-    const it = selectedItem();
-    if(!it) return;
-    if(it.kind === "folder"){
-      setPath(it.relPath.replace(/\/+$/, ""));
-    } else {
-      window.open(it.url, "_blank", "noopener");
-    }
-  }
-
-  function renderNextBatch(first=false){
-    if(isRendering) return;
-    isRendering = true;
-
-    const target = Math.min(renderPool.length, renderCount + RENDER_BATCH);
-    loadMoreEl.style.display = (renderCount < renderPool.length) ? "block" : "none";
-
-    const frag = document.createDocumentFragment();
-
-    for(let idx = renderCount; idx < target; idx++){
-      const e = renderPool[idx];
-
-      if(VIEW_MODE === "list"){
-        const row = document.createElement("div");
-        row.className = "row";
-        row.innerHTML = `
-          <div class="cellname">
-            <div class="fileicon">${iconFor(e)}</div>
-            <div class="nametext">
-              <b>${e.name}</b>
-              <span>${e.url}</span>
-            </div>
+    function renderPlaces(){
+      const p = currentPath();
+      const root = p.split("/")[0] || "";
+      placesEl.innerHTML = "";
+      for(const t of TOPS){
+        const el = document.createElement("div");
+        el.className = "place" + (root === t.key ? " active" : "");
+        el.innerHTML = `
+          <div class="picon">${t.icon}</div>
+          <div class="plabel">
+            <b>${t.name}</b>
+            <span>/${t.key}/</span>
           </div>
-          <div class="type">${e.kind === "folder" ? "Folder" : (extLower(e.name) || "file")}</div>
-          <div class="modified">${fmtDate(e.mtimeMs)}</div>
-          <div class="dlcell"></div>
         `;
-
-        const dlCell = row.querySelector(".dlcell");
-        const dl = document.createElement("button");
-        dl.className = "dlbtn";
-        dl.title = (e.kind === "folder") ? "Download folder as ZIP" : "Download";
-        dl.textContent = "⬇";
-        dl.onclick = (ev)=>{ ev.stopPropagation(); downloadItem(e); };
-        dlCell.appendChild(dl);
-
-        row.addEventListener("click", ()=>{
-          selectedIndex = idx;
-          hideCtx();
-          highlightSelection();
-          updateDetails(selectedItem());
-        });
-        row.addEventListener("dblclick", ()=>{
-          selectedIndex = idx;
-          hideCtx();
-          highlightSelection();
-          updateDetails(selectedItem());
-          openSelected();
-        });
-        row.addEventListener("contextmenu", (ev)=>{
-          ev.preventDefault();
-          selectedIndex = idx;
-          highlightSelection();
-          updateDetails(selectedItem());
-          showCtx(ev.clientX, ev.clientY);
-        });
-
-        frag.appendChild(row);
-      } else {
-        const tile = document.createElement("div");
-        tile.className = "tile";
-
-        const ext = extLower(e.name);
-        const isImg = e.kind==="file" && isImageExt(ext);
-
-        let thumbHTML = `<div class="emoji">${iconFor(e)}</div>`;
-        if(isImg) thumbHTML = `<img src="${e.url}" loading="lazy" alt="">`;
-
-        tile.innerHTML = `
-          <div class="thumb">${thumbHTML}</div>
-          <div class="tilemeta">
-            <b title="${e.name}">${e.name}</b>
-            <span title="${e.url}">${e.url}</span>
-          </div>
-          <div class="tileDl" title="${e.kind === "folder" ? "Download folder as ZIP" : "Download"}">⬇</div>
-        `;
-
-        const dl = tile.querySelector(".tileDl");
-        dl.addEventListener("click", (ev)=>{ ev.stopPropagation(); downloadItem(e); });
-
-        tile.addEventListener("click", ()=>{
-          selectedIndex = idx;
-          hideCtx();
-          highlightSelection();
-          updateDetails(selectedItem());
-        });
-        tile.addEventListener("dblclick", ()=>{
-          selectedIndex = idx;
-          hideCtx();
-          highlightSelection();
-          updateDetails(selectedItem());
-          openSelected();
-        });
-        tile.addEventListener("contextmenu", (ev)=>{
-          ev.preventDefault();
-          selectedIndex = idx;
-          highlightSelection();
-          updateDetails(selectedItem());
-          showCtx(ev.clientX, ev.clientY);
-        });
-
-        frag.appendChild(tile);
+        el.onclick = ()=> setPath(t.key);
+        placesEl.appendChild(el);
       }
     }
 
-    rowsEl.appendChild(frag);
-
-    if(first){
-      if(selectedIndex < 0 && renderPool.length > 0) selectedIndex = 0;
-      highlightSelection();
-      updateDetails(selectedItem());
-    } else {
-      highlightSelection();
+    // ===== Download helpers =====
+    function downloadUrl(url, filename){
+      const a = document.createElement("a");
+      a.href = url;
+      if (filename) a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     }
 
-    renderCount = target;
-    loadMoreEl.style.display = (renderCount < renderPool.length) ? "block" : "none";
-    isRendering = false;
-  }
-
-  // ===== Context Menu =====
-  function showCtx(x,y){
-    ctxMenu.style.display = "block";
-    const pad=8;
-    const w=ctxMenu.offsetWidth, h=ctxMenu.offsetHeight;
-    ctxMenu.style.left = Math.max(pad, Math.min(x, innerWidth-w-pad)) + "px";
-    ctxMenu.style.top  = Math.max(pad, Math.min(y, innerHeight-h-pad)) + "px";
-    ctxOpen.disabled = !selectedItem();
-  }
-  function hideCtx(){ ctxMenu.style.display = "none"; }
-  ctxOpen.onclick = ()=>{ hideCtx(); openSelected(); };
-  document.addEventListener("click", (ev)=>{ if(!ev.target.closest(".ctx")) hideCtx(); });
-  window.addEventListener("resize", hideCtx);
-
-  // ===== Lazy loading =====
-  rowsEl.addEventListener("scroll", ()=>{
-    const nearBottom = rowsEl.scrollTop + rowsEl.clientHeight >= rowsEl.scrollHeight - 240;
-    if(nearBottom && renderCount < renderPool.length) renderNextBatch(false);
-  });
-
-  // ===== Keyboard nav =====
-  rowsEl.addEventListener("keydown", (ev)=>{
-    if(renderPool.length === 0) return;
-    if(ev.key === "ArrowDown"){
-      ev.preventDefault();
-      selectedIndex = Math.min(renderPool.length-1, selectedIndex + 1);
-      while(renderCount <= selectedIndex && renderCount < renderPool.length) renderNextBatch(false);
-      highlightSelection();
-      updateDetails(selectedItem());
-    } else if(ev.key === "ArrowUp"){
-      ev.preventDefault();
-      selectedIndex = Math.max(0, selectedIndex - 1);
-      highlightSelection();
-      updateDetails(selectedItem());
-    } else if(ev.key === "Enter"){
-      ev.preventDefault();
-      openSelected();
+    // IMPORTANT: folder download uses client-side ZIP (window.downloadFolderZip from module script)
+    async function downloadItem(it){
+      if(!it) return;
+      if(it.kind === "folder"){
+        if(typeof window.downloadFolderZip !== "function"){
+          alert("ZIP module not loaded yet. Try again in a second.");
+          return;
+        }
+        await window.downloadFolderZip(it.relPath, it.name);
+      } else {
+        downloadUrl(it.url, it.name);
+      }
     }
-  });
 
-  // ===== Buttons =====
-  openBtn.onclick = openSelected;
-  refreshBtn.onclick = load;
-  upBtn.onclick = ()=>{
-    const p = currentPath();
-    if(!p) return;
-    const parts = p.split("/").filter(Boolean);
-    parts.pop();
-    setPath(parts.join("/"));
-  };
-  backBtn.onclick = ()=> history.back();
-  fwdBtn.onclick = ()=> history.forward();
-
-  searchBox.addEventListener("input", ()=> renderRows(true));
-  listViewBtn.onclick = ()=> setViewMode("list");
-  gridViewBtn.onclick = ()=> setViewMode("grid");
-
-  // ===== Lock / Logout (client-side) =====
-  async function sha256Hex(str){
-    const data = new TextEncoder().encode(str);
-    const hash = await crypto.subtle.digest("SHA-256", data);
-    return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");
-  }
-
-  function showLock(mode){
-    lock.style.display = "flex";
-    lockMsg.textContent = "";
-    lockPass.value = "";
-    lockPass.focus();
-    if(mode === "setup"){
-      lockHint.textContent = "Set a lock password (this device only)";
-      unlockBtn.textContent = "Set";
-    } else {
-      lockHint.textContent = "Enter to unlock";
-      unlockBtn.textContent = "Unlock";
+    // ===== Search (case-insensitive) =====
+    function applyFilterToPool(){
+      const q = (searchBox.value || "").trim().toLocaleLowerCase();
+      if(!q) return items;
+      return items.filter(x => (x.name || "").toLocaleLowerCase().includes(q));
     }
-  }
 
-  async function handleUnlock(){
-    const pass = lockPass.value || "";
-    if(pass.length < 1){
-      lockMsg.textContent = "Enter a password.";
-      return;
+    // ===== View =====
+    function setViewMode(mode){
+      VIEW_MODE = mode;
+      localStorage.setItem("ND_VIEW", mode);
+      listViewBtn.classList.toggle("active", mode === "list");
+      gridViewBtn.classList.toggle("active", mode === "grid");
+      listHead.style.display = (mode === "list") ? "grid" : "none";
+      rowsEl.classList.toggle("grid", mode === "grid");
+      renderRows(true);
     }
+
+    function renderRows(reset=false){
+      if(reset){
+        rowsEl.innerHTML = "";
+        renderCount = 0;
+        selectedIndex = -1;
+        hideCtx();
+      }
+
+      renderPool = applyFilterToPool();
+      sbLeft.textContent = `${renderPool.length} item${renderPool.length===1?"":"s"}`;
+
+      if(renderPool.length === 0){
+        loadMoreEl.style.display = "none";
+        updateDetails(null);
+        openBtn.disabled = true;
+        ctxOpen.disabled = true;
+        return;
+      }
+
+      renderNextBatch(true);
+    }
+
+    function highlightSelection(){
+      const children = Array.from(rowsEl.children).filter(el => el.classList.contains("row") || el.classList.contains("tile"));
+      children.forEach((el, i)=> el.classList.toggle("selected", i === selectedIndex));
+      const has = !!selectedItem();
+      openBtn.disabled = !has;
+      ctxOpen.disabled = !has;
+    }
+
+    function selectedItem(){
+      if(selectedIndex < 0 || selectedIndex >= renderPool.length) return null;
+      return renderPool[selectedIndex];
+    }
+
+    function updateDetails(it){
+      if(!it){
+        preview.innerHTML = `<div class="bigicon">🗂️</div><small>Select an item</small>`;
+        kv.innerHTML = `
+          <div class="k">Name</div><div class="v">—</div>
+          <div class="k">Type</div><div class="v">—</div>
+          <div class="k">Size</div><div class="v">—</div>
+          <div class="k">Modified</div><div class="v">—</div>
+          <div class="k">URL</div><div class="v">—</div>
+        `;
+        return;
+      }
+
+      const ext = extLower(it.name);
+      const isImg = it.kind === "file" && isImageExt(ext);
+      const isVid = it.kind === "file" && isVideoExt(ext);
+      const isAud = it.kind === "file" && isAudioExt(ext);
+
+      if(isImg){
+        preview.innerHTML = `<img src="${it.url}" alt=""><small>${it.url}</small>`;
+      } else if(isVid){
+        preview.innerHTML = `
+          <video src="${it.url}" controls preload="metadata"
+            style="width:100%;max-height:150px;border-radius:14px;border:1px solid rgba(255,255,255,.10)"></video>
+          <small>${it.url}</small>
+        `;
+      } else if(isAud){
+        preview.innerHTML = `
+          <audio src="${it.url}" controls preload="metadata" style="width:100%"></audio>
+          <small>${it.url}</small>
+        `;
+      } else {
+        preview.innerHTML = `<div class="bigicon">${iconFor(it)}</div><small>${it.url}</small>`;
+      }
+
+      kv.innerHTML = `
+        <div class="k">Name</div><div class="v" title="${it.name}">${it.name}</div>
+        <div class="k">Type</div><div class="v">${it.kind === "folder" ? "Folder" : (ext || "file")}</div>
+        <div class="k">Size</div><div class="v">${it.kind === "folder" ? "—" : fmtBytes(it.size)}</div>
+        <div class="k">Modified</div><div class="v">${fmtDate(it.mtimeMs)}</div>
+        <div class="k">URL</div><div class="v" title="${it.url}">${it.url}</div>
+      `;
+    }
+
+    function openSelected(){
+      const it = selectedItem();
+      if(!it) return;
+      if(it.kind === "folder"){
+        setPath(it.relPath.replace(/\/+$/, ""));
+      } else {
+        window.open(it.url, "_blank", "noopener");
+      }
+    }
+
+    function renderNextBatch(first=false){
+      if(isRendering) return;
+      isRendering = true;
+
+      const target = Math.min(renderPool.length, renderCount + RENDER_BATCH);
+      loadMoreEl.style.display = (renderCount < renderPool.length) ? "block" : "none";
+
+      const frag = document.createDocumentFragment();
+
+      for(let idx = renderCount; idx < target; idx++){
+        const e = renderPool[idx];
+
+        if(VIEW_MODE === "list"){
+          const row = document.createElement("div");
+          row.className = "row";
+          row.innerHTML = `
+            <div class="cellname">
+              <div class="fileicon">${iconFor(e)}</div>
+              <div class="nametext">
+                <b>${e.name}</b>
+                <span>${e.url}</span>
+              </div>
+            </div>
+            <div class="type">${e.kind === "folder" ? "Folder" : (extLower(e.name) || "file")}</div>
+            <div class="modified">${fmtDate(e.mtimeMs)}</div>
+            <div class="dlcell"></div>
+          `;
+
+          const dlCell = row.querySelector(".dlcell");
+          const dl = document.createElement("button");
+          dl.className = "dlbtn";
+          dl.title = (e.kind === "folder") ? "Download folder as ZIP" : "Download";
+          dl.textContent = "⬇";
+          dl.onclick = async (ev)=>{ ev.stopPropagation(); await downloadItem(e); };
+          dlCell.appendChild(dl);
+
+          row.addEventListener("click", ()=>{
+            selectedIndex = idx;
+            hideCtx();
+            highlightSelection();
+            updateDetails(selectedItem());
+          });
+          row.addEventListener("dblclick", ()=>{
+            selectedIndex = idx;
+            hideCtx();
+            highlightSelection();
+            updateDetails(selectedItem());
+            openSelected();
+          });
+          row.addEventListener("contextmenu", (ev)=>{
+            ev.preventDefault();
+            selectedIndex = idx;
+            highlightSelection();
+            updateDetails(selectedItem());
+            showCtx(ev.clientX, ev.clientY);
+          });
+
+          frag.appendChild(row);
+        } else {
+          const tile = document.createElement("div");
+          tile.className = "tile";
+
+          const ext = extLower(e.name);
+          const isImg = e.kind==="file" && isImageExt(ext);
+
+          let thumbHTML = `<div class="emoji">${iconFor(e)}</div>`;
+          if(isImg) thumbHTML = `<img src="${e.url}" loading="lazy" alt="">`;
+
+          tile.innerHTML = `
+            <div class="thumb">${thumbHTML}</div>
+            <div class="tilemeta">
+              <b title="${e.name}">${e.name}</b>
+              <span title="${e.url}">${e.url}</span>
+            </div>
+            <div class="tileDl" title="${e.kind === "folder" ? "Download folder as ZIP" : "Download"}">⬇</div>
+          `;
+
+          const dl = tile.querySelector(".tileDl");
+          dl.addEventListener("click", async (ev)=>{ ev.stopPropagation(); await downloadItem(e); });
+
+          tile.addEventListener("click", ()=>{
+            selectedIndex = idx;
+            hideCtx();
+            highlightSelection();
+            updateDetails(selectedItem());
+          });
+          tile.addEventListener("dblclick", ()=>{
+            selectedIndex = idx;
+            hideCtx();
+            highlightSelection();
+            updateDetails(selectedItem());
+            openSelected();
+          });
+          tile.addEventListener("contextmenu", (ev)=>{
+            ev.preventDefault();
+            selectedIndex = idx;
+            highlightSelection();
+            updateDetails(selectedItem());
+            showCtx(ev.clientX, ev.clientY);
+          });
+
+          frag.appendChild(tile);
+        }
+      }
+
+      rowsEl.appendChild(frag);
+
+      if(first){
+        if(selectedIndex < 0 && renderPool.length > 0) selectedIndex = 0;
+        highlightSelection();
+        updateDetails(selectedItem());
+      } else {
+        highlightSelection();
+      }
+
+      renderCount = target;
+      loadMoreEl.style.display = (renderCount < renderPool.length) ? "block" : "none";
+      isRendering = false;
+    }
+
+    // ===== Context Menu =====
+    function showCtx(x,y){
+      ctxMenu.style.display = "block";
+      const pad=8;
+      const w=ctxMenu.offsetWidth, h=ctxMenu.offsetHeight;
+      ctxMenu.style.left = Math.max(pad, Math.min(x, innerWidth-w-pad)) + "px";
+      ctxMenu.style.top  = Math.max(pad, Math.min(y, innerHeight-h-pad)) + "px";
+      ctxOpen.disabled = !selectedItem();
+    }
+    function hideCtx(){ ctxMenu.style.display = "none"; }
+    ctxOpen.onclick = ()=>{ hideCtx(); openSelected(); };
+    document.addEventListener("click", (ev)=>{ if(!ev.target.closest(".ctx")) hideCtx(); });
+    window.addEventListener("resize", hideCtx);
+
+    // ===== Lazy loading (rendering) =====
+    rowsEl.addEventListener("scroll", ()=>{
+      const nearBottom = rowsEl.scrollTop + rowsEl.clientHeight >= rowsEl.scrollHeight - 240;
+      if(nearBottom && renderCount < renderPool.length) renderNextBatch(false);
+    });
+
+    // ===== Keyboard nav =====
+    rowsEl.addEventListener("keydown", (ev)=>{
+      if(renderPool.length === 0) return;
+      if(ev.key === "ArrowDown"){
+        ev.preventDefault();
+        selectedIndex = Math.min(renderPool.length-1, selectedIndex + 1);
+        while(renderCount <= selectedIndex && renderCount < renderPool.length) renderNextBatch(false);
+        highlightSelection();
+        updateDetails(selectedItem());
+      } else if(ev.key === "ArrowUp"){
+        ev.preventDefault();
+        selectedIndex = Math.max(0, selectedIndex - 1);
+        highlightSelection();
+        updateDetails(selectedItem());
+      } else if(ev.key === "Enter"){
+        ev.preventDefault();
+        openSelected();
+      }
+    });
+
+    // ===== Buttons =====
+    openBtn.onclick = openSelected;
+    refreshBtn.onclick = load;
+    upBtn.onclick = ()=>{
+      const p = currentPath();
+      if(!p) return;
+      const parts = p.split("/").filter(Boolean);
+      parts.pop();
+      setPath(parts.join("/"));
+    };
+    backBtn.onclick = ()=> history.back();
+    fwdBtn.onclick = ()=> history.forward();
+
+    searchBox.addEventListener("input", ()=> renderRows(true));
+    listViewBtn.onclick = ()=> setViewMode("list");
+    gridViewBtn.onclick = ()=> setViewMode("grid");
+
+    // ===== Lock / Logout (client-side) =====
+    async function sha256Hex(str){
+      const data = new TextEncoder().encode(str);
+      const hash = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");
+    }
+
+    function showLock(mode){
+      lock.style.display = "flex";
+      lockMsg.textContent = "";
+      lockPass.value = "";
+      lockPass.focus();
+      if(mode === "setup"){
+        lockHint.textContent = "Set a lock password (this device only)";
+        unlockBtn.textContent = "Set";
+      } else {
+        lockHint.textContent = "Enter to unlock";
+        unlockBtn.textContent = "Unlock";
+      }
+    }
+
+    async function handleUnlock(){
+      const pass = lockPass.value || "";
+      if(pass.length < 1){
+        lockMsg.textContent = "Enter a password.";
+        return;
+      }
+      if(!lockHash){
+        lockHash = await sha256Hex(pass);
+        localStorage.setItem(LOCK_KEY, lockHash);
+        lock.style.display = "none";
+        subtitle.textContent = "Ready";
+        return;
+      }
+      const h = await sha256Hex(pass);
+      if(h === lockHash){
+        lock.style.display = "none";
+        subtitle.textContent = "Ready";
+      } else {
+        lockMsg.textContent = "Wrong password.";
+        lockPass.select();
+      }
+    }
+
+    unlockBtn.onclick = handleUnlock;
+    lockPass.addEventListener("keydown", (e)=>{ if(e.key === "Enter") handleUnlock(); });
+    logoutBtn.onclick = ()=> showLock("lock");
+
+    // ===== Load =====
+    window.addEventListener("popstate", load);
+
+    async function load(){
+      hideCtx();
+      net.textContent = "Loading...";
+      sbRight.textContent = "Loading...";
+      selectedIndex = -1;
+
+      const p = currentPath();
+      buildCrumbs(p);
+      renderPlaces();
+
+      try{
+        INDEX = await loadIndex();
+        items = nodeChildrenForPath(p);
+        renderRows(true);
+        net.textContent = "OK";
+        sbRight.textContent = "Ready";
+      } catch(e){
+        items = [];
+        renderRows(true);
+        net.textContent = "Error";
+        sbRight.textContent = String(e);
+      }
+    }
+
+    // ===== Init =====
+    setViewMode(VIEW_MODE);
+
     if(!lockHash){
-      lockHash = await sha256Hex(pass);
-      localStorage.setItem(LOCK_KEY, lockHash);
-      lock.style.display = "none";
-      subtitle.textContent = "Ready";
-      return;
-    }
-    const h = await sha256Hex(pass);
-    if(h === lockHash){
-      lock.style.display = "none";
-      subtitle.textContent = "Ready";
+      showLock("setup");
     } else {
-      lockMsg.textContent = "Wrong password.";
-      lockPass.select();
+      lock.style.display = "none";
     }
-  }
 
-  unlockBtn.onclick = handleUnlock;
-  lockPass.addEventListener("keydown", (e)=>{ if(e.key === "Enter") handleUnlock(); });
-  logoutBtn.onclick = ()=> showLock("lock");
-
-  // ===== Load =====
-  window.addEventListener("popstate", load);
-
-  async function load(){
-    hideCtx();
-    net.textContent = "Loading...";
-    sbRight.textContent = "Loading...";
-    selectedIndex = -1;
-
-    const p = currentPath();
-    buildCrumbs(p);
-    renderPlaces();
-
-    try{
-      INDEX = await loadIndex();
-      items = nodeChildrenForPath(p);
-      renderRows(true);
-      net.textContent = "OK";
-      sbRight.textContent = "Ready";
-    } catch(e){
-      items = [];
-      renderRows(true);
-      net.textContent = "Error";
-      sbRight.textContent = String(e);
-    }
-  }
-
-  // ===== Init =====
-  setViewMode(VIEW_MODE);
-
-  if(!lockHash){
-    showLock("setup");
-  } else {
-    lock.style.display = "none";
-  }
-
-  load();
-</script>
+    load();
+  </script>
 </body>
 </html>
