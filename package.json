@@ -2,9 +2,13 @@
   "name": "noxiustdrive",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+  "predev": "node scripts/build-index.js",
+  "dev": "next dev",
+  "prebuild": "node scripts/build-index.js",
+  "build": "next build",
+  "start": "next start"
+}
+
   },
   "dependencies": {
     "next": "^14.2.0",
