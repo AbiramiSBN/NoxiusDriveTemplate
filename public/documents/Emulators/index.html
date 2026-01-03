@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Emulators</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#111827;
+      --panel2:#0f172a;
+      --stroke:#243042;
+      --text:#e8eef7;
+      --muted:#a7b3c6;
+      --accent:#4da3ff;
+      --shadow: 0 18px 55px rgba(0,0,0,.55);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(900px 500px at 20% 15%, rgba(77,163,255,.16), transparent 60%),
+        radial-gradient(900px 500px at 80% 25%, rgba(160,107,255,.12), transparent 60%),
+        linear-gradient(180deg, #06080c, var(--bg));
+      color:var(--text);
+    }
+
+    /* Top bar */
+    header{
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(8,12,18,.65);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .topbar{
+      max-width: 1100px;
+      margin:0 auto;
+      padding: 14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight:900; letter-spacing:.2px;
+    }
+    .logo{
+      width:34px;height:34px;border-radius:12px;
+      background: radial-gradient(14px 14px at 35% 30%, rgba(255,255,255,.35), transparent 60%),
+                 linear-gradient(135deg, rgba(77,163,255,.95), rgba(160,107,255,.85));
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 12px 35px rgba(77,163,255,.18);
+    }
+    .sub{
+      font-size:12px; color:var(--muted); font-weight:700;
+      margin-top:2px; letter-spacing:.25px;
+    }
+    .brandText{display:flex; flex-direction:column; line-height:1.1}
+    .searchWrap{
+      display:flex; align-items:center; gap:10px;
+      flex: 1;
+      justify-content:flex-end;
+    }
+    input[type="search"]{
+      width:min(520px, 100%);
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(7,10,15,.45);
+      color: var(--text);
+      padding: 11px 12px;
+      border-radius: 14px;
+      outline:none;
+    }
+    input[type="search"]::placeholder{ color: rgba(167,179,198,.72); }
+
+    /* Page layout */
+    .wrap{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 18px 16px 26px;
+      display:grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 18px;
+    }
+
+    /* Switch-like console strip */
+    .consoleStrip{
+      display:flex;
+      gap: 12px;
+      overflow:auto;
+      padding-bottom: 6px;
+      scroll-snap-type: x mandatory;
+    }
+    .consoleStrip::-webkit-scrollbar{ height:10px; }
+    .consoleStrip::-webkit-scrollbar-thumb{
+      background: rgba(255,255,255,.12);
+      border-radius: 999px;
+      border: 3px solid transparent;
+      background-clip: padding-box;
+    }
+
+    .tile{
+      flex: 0 0 auto;
+      width: 160px;
+      scroll-snap-align: start;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 16px 40px rgba(0,0,0,.25);
+      cursor:pointer;
+      padding: 14px;
+      transition: .16s ease;
+      user-select:none;
+      position:relative;
+      overflow:hidden;
+    }
+    .tile:hover{ transform: translateY(-2px); border-color: rgba(77,163,255,.22); }
+    .tile.active{
+      border-color: rgba(77,163,255,.35);
+      box-shadow: 0 18px 55px rgba(77,163,255,.14);
+      background: linear-gradient(180deg, rgba(77,163,255,.16), rgba(255,255,255,.03));
+    }
+    .tile .icon{
+      width:48px;height:48px;border-radius:16px;
+      display:grid;place-items:center;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+      letter-spacing:.3px;
+    }
+    .tile h3{
+      margin: 10px 0 4px;
+      font-size: 14px;
+      letter-spacing:.2px;
+    }
+    .tile p{
+      margin:0;
+      color: var(--muted);
+      font-weight:700;
+      font-size: 12px;
+    }
+
+    /* Main panel */
+    .panel{
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(17,24,39,.72), rgba(15,23,42,.55));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .panelHead{
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap:wrap;
+    }
+    .panelHead h2{
+      margin:0;
+      font-size: 18px;
+      letter-spacing:.2px;
+    }
+    .panelHead .desc{
+      margin:6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight:700;
+      max-width: 70ch;
+    }
+    .pill{
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing:.2px;
+      white-space:nowrap;
+    }
+
+    .grid{
+      padding: 14px 16px 16px;
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .card{
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      overflow:hidden;
+      transition: .16s ease;
+      display:flex;
+      flex-direction:column;
+      min-height: 128px;
+    }
+    .card:hover{
+      transform: translateY(-2px);
+      border-color: rgba(77,163,255,.22);
+      box-shadow: 0 16px 40px rgba(0,0,0,.25);
+    }
+    .cardTop{
+      padding: 12px 14px 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .tag{
+      font-size: 11px;
+      font-weight: 1000;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.10);
+      color: var(--muted);
+    }
+    .tag.accent{
+      background: linear-gradient(135deg, rgba(77,163,255,1), rgba(160,107,255,1));
+      color:#071018;
+      border-color: rgba(255,255,255,.18);
+    }
+    .cardMid{
+      padding: 0 14px 12px;
+      display:grid;
+      gap: 4px;
+    }
+    .cardMid b{
+      font-size: 15px;
+      letter-spacing:.2px;
+    }
+    .cardMid span{
+      color: var(--muted);
+      font-size: 12px;
+      font-weight:700;
+    }
+    .cardBot{
+      margin-top:auto;
+      padding: 12px 14px 14px;
+      border-top: 1px solid rgba(255,255,255,.06);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight:700;
+    }
+    .openBtn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      justify-content:center;
+      padding: 9px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      font-weight: 1000;
+      font-size: 12px;
+      cursor:pointer;
+      text-decoration:none;
+      white-space:nowrap;
+      transition:.15s ease;
+    }
+    .openBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.08); }
+
+    footer{
+      color: rgba(167,179,198,.85);
+      font-size: 12px;
+      font-weight:700;
+      padding: 14px 2px 0;
+    }
+
+    @media (max-width:720px){
+      .tile{ width: 145px; }
+      .panelHead{ align-items:flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div class="brandText">
+          <div>Emulators</div>
+          <div class="sub">Switch-style UI • dark mode</div>
+        </div>
+      </div>
+
+      <div class="searchWrap">
+        <input id="search" type="search" placeholder="Search emulator (e.g., PCSX2, Dolphin, Eden)..." />
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="consoleStrip" id="consoleStrip" aria-label="Console selector"></div>
+
+    <section class="panel" aria-label="Emulator list">
+      <div class="panelHead">
+        <div>
+          <h2 id="panelTitle">All Consoles</h2>
+          <div class="desc" id="panelDesc">Pick a console above to view emulators. Use search to filter.</div>
+        </div>
+        <div class="pill" id="panelCount">0 emulators</div>
+      </div>
+
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <footer>
+      Emulators are generally legal. Use your own dumped BIOS/firmware and legally owned games.
+    </footer>
+  </div>
+
+  <script>
+    // Simple, reliable (no fancy frameworks) — should run anywhere.
+    const EMULATORS = [
+      // Sony
+      { console:"PlayStation 1", brand:"Sony", system:"PS1", name:"DuckStation", url:"https://github.com/stenzek/duckstation", platforms:"Windows · Linux · macOS · Android" },
+      { console:"PlayStation 1", brand:"Sony", system:"PS1", name:"PCSX-Reloaded", url:"https://pcsx-reloaded.github.io/", platforms:"Windows · Linux · macOS" },
+      { console:"PlayStation 2", brand:"Sony", system:"PS2", name:"PCSX2", url:"https://pcsx2.net/", platforms:"Windows · Linux · macOS" },
+      { console:"PSP", brand:"Sony", system:"PSP", name:"PPSSPP", url:"https://www.ppsspp.org/", platforms:"Windows · Linux · macOS · Android · iOS" },
+      { console:"PlayStation 3", brand:"Sony", system:"PS3", name:"RPCS3", url:"https://rpcs3.net/", platforms:"Windows · Linux" },
+      { console:"PS Vita", brand:"Sony", system:"Vita", name:"Vita3K", url:"https://vita3k.org/", platforms:"Windows · Linux · macOS" },
+
+      // Microsoft
+      { console:"Original Xbox", brand:"Microsoft", system:"Xbox", name:"xemu", url:"https://xemu.app/", platforms:"Windows · Linux · macOS" },
+      { console:"Xbox 360", brand:"Microsoft", system:"X360", name:"Xenia", url:"https://xenia.jp/", platforms:"Windows · Linux" },
+
+      // Nintendo
+      { console:"NES", brand:"Nintendo", system:"NES", name:"Mesen", url:"https://www.mesen.ca/", platforms:"Windows · Linux" },
+      { console:"SNES", brand:"Nintendo", system:"SNES", name:"Snes9x", url:"https://www.snes9x.com/", platforms:"Windows · Linux · macOS" },
+      { console:"Nintendo 64", brand:"Nintendo", system:"N64", name:"Project64", url:"https://www.pj64-emu.com/", platforms:"Windows" },
+      { console:"GameCube / Wii", brand:"Nintendo", system:"GC/Wii", name:"Dolphin", url:"https://dolphin-emu.org/", platforms:"Windows · Linux · macOS · Android" },
+      { console:"Wii U", brand:"Nintendo", system:"Wii U", name:"Cemu", url:"https://cemu.info/", platforms:"Windows · Linux" },
+      { console:"Switch", brand:"Nintendo", system:"Switch", name:"Ryujinx", url:"https://ryujinx.org/", platforms:"Windows · Linux · macOS" },
+      { console:"Switch", brand:"Nintendo", system:"Switch", name:"Yuzu (archived)", url:"https://github.com/yuzu-emu/yuzu", platforms:"Windows · Linux" },
+      { console:"Switch", brand:"Nintendo", system:"Switch", name:"Eden", url:"https://eden-emu.dev/", platforms:"Varies" },
+
+      { console:"Game Boy / Color", brand:"Nintendo", system:"GB/GBC", name:"SameBoy", url:"https://sameboy.github.io/", platforms:"Windows · Linux · macOS" },
+      { console:"Game Boy Advance", brand:"Nintendo", system:"GBA", name:"mGBA", url:"https://mgba.io/", platforms:"Windows · Linux · macOS" },
+      { console:"Nintendo DS", brand:"Nintendo", system:"DS", name:"melonDS", url:"https://melonds.kuribo64.net/", platforms:"Windows · Linux · macOS" },
+      { console:"Nintendo 3DS", brand:"Nintendo", system:"3DS", name:"Citra", url:"https://citra-emu.org/", platforms:"Windows · Linux · macOS" },
+
+      // Sega
+      { console:"Master System / Genesis", brand:"Sega", system:"Genesis", name:"Kega Fusion", url:"https://www.carpeludum.com/kega-fusion/", platforms:"Windows" },
+      { console:"Sega Saturn", brand:"Sega", system:"Saturn", name:"Yaba Sanshiro", url:"https://yabasanshiro.com/", platforms:"Windows · Linux · Android" },
+      { console:"Dreamcast / Naomi", brand:"Sega", system:"Dreamcast", name:"Flycast", url:"https://github.com/flyinghead/flycast", platforms:"Windows · Linux · macOS · Android" },
+
+      // Multi
+      { console:"Multi-System", brand:"Multi", system:"Multi", name:"RetroArch", url:"https://www.retroarch.com/", platforms:"Windows · Linux · macOS · Android · iOS + more" },
+      { console:"Arcade", brand:"Multi", system:"Arcade", name:"MAME", url:"https://www.mamedev.org/", platforms:"Windows · Linux · macOS" },
+      { console:"Multi-System", brand:"Multi", system:"Multi", name:"Mednafen", url:"https://mednafen.github.io/", platforms:"Windows · Linux" },
+      { console:"Multi-System", brand:"Multi", system:"Multi", name:"BizHawk", url:"https://tasvideos.org/BizHawk", platforms:"Windows" },
+    ];
+
+    const ICONS = {
+      "All":"★",
+      "PlayStation 1":"PS",
+      "PlayStation 2":"PS",
+      "PSP":"PS",
+      "PlayStation 3":"PS",
+      "PS Vita":"PS",
+      "Original Xbox":"XB",
+      "Xbox 360":"XB",
+      "NES":"N",
+      "SNES":"N",
+      "Nintendo 64":"N",
+      "GameCube / Wii":"N",
+      "Wii U":"N",
+      "Switch":"N",
+      "Game Boy / Color":"N",
+      "Game Boy Advance":"N",
+      "Nintendo DS":"N",
+      "Nintendo 3DS":"N",
+      "Master System / Genesis":"SE",
+      "Sega Saturn":"SE",
+      "Dreamcast / Naomi":"SE",
+      "Multi-System":"∞",
+      "Arcade":"🕹",
+    };
+
+    // Consoles list (unique)
+    const consoles = ["All", ...Array.from(new Set(EMULATORS.map(e => e.console)))];
+
+    const strip = document.getElementById("consoleStrip");
+    const grid = document.getElementById("grid");
+    const search = document.getElementById("search");
+    const panelTitle = document.getElementById("panelTitle");
+    const panelDesc = document.getElementById("panelDesc");
+    const panelCount = document.getElementById("panelCount");
+
+    let activeConsole = "All";
+    let q = "";
+
+    function tileCount(consoleName){
+      if (consoleName === "All") return EMULATORS.length;
+      return EMULATORS.filter(e => e.console === consoleName).length;
+    }
+
+    function renderStrip(){
+      strip.innerHTML = "";
+      consoles.forEach(name => {
+        const tile = document.createElement("div");
+        tile.className = "tile" + (name === activeConsole ? " active" : "");
+        tile.tabIndex = 0;
+        tile.setAttribute("role","button");
+        tile.setAttribute("aria-label", `Select ${name}`);
+
+        const icon = document.createElement("div");
+        icon.className = "icon";
+        icon.textContent = ICONS[name] || "•";
+
+        const h = document.createElement("h3");
+        h.textContent = name;
+
+        const p = document.createElement("p");
+        const c = tileCount(name);
+        p.textContent = `${c} emulator${c === 1 ? "" : "s"}`;
+
+        tile.appendChild(icon);
+        tile.appendChild(h);
+        tile.appendChild(p);
+
+        tile.addEventListener("click", () => { activeConsole = name; renderAll(); });
+        tile.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activeConsole = name; renderAll(); }
+        });
+
+        strip.appendChild(tile);
+      });
+    }
+
+    function filtered(){
+      const query = (q || "").toLowerCase().trim();
+      return EMULATORS.filter(e => {
+        const consoleOk = activeConsole === "All" || e.console === activeConsole;
+        if (!consoleOk) return false;
+        if (!query) return true;
+        const hay = `${e.console} ${e.brand} ${e.system} ${e.name} ${e.platforms} ${e.url}`.toLowerCase();
+        return hay.includes(query);
+      });
+    }
+
+    function renderGrid(){
+      const list = filtered();
+
+      panelTitle.textContent = activeConsole === "All" ? "All Consoles" : activeConsole;
+      panelDesc.textContent = q
+        ? `Showing results for “${q}”. Click “Open” to visit official pages.`
+        : `Select a console above to view emulators.`;
+      panelCount.textContent = `${list.length} emulator${list.length === 1 ? "" : "s"}`;
+
+      grid.innerHTML = "";
+      if (!list.length){
+        const empty = document.createElement("div");
+        empty.style.padding = "10px 4px 18px";
+        empty.style.color = "var(--muted)";
+        empty.style.fontWeight = "800";
+        empty.textContent = "No matches. Try a different search.";
+        grid.appendChild(empty);
+        return;
+      }
+
+      list.forEach(e => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const top = document.createElement("div");
+        top.className = "cardTop";
+
+        const tagA = document.createElement("div");
+        tagA.className = "tag accent";
+        tagA.textContent = e.system;
+
+        const tagB = document.createElement("div");
+        tagB.className = "tag";
+        tagB.textContent = e.brand;
+
+        top.appendChild(tagA);
+        top.appendChild(tagB);
+
+        const mid = document.createElement("div");
+        mid.className = "cardMid";
+        mid.innerHTML = `<b>${e.name}</b><span>${e.console}</span>`;
+
+        const bot = document.createElement("div");
+        bot.className = "cardBot";
+
+        const plats = document.createElement("div");
+        plats.textContent = e.platforms;
+
+        const a = document.createElement("a");
+        a.className = "openBtn";
+        a.href = e.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = "Open ↗";
+
+        bot.appendChild(plats);
+        bot.appendChild(a);
+
+        card.appendChild(top);
+        card.appendChild(mid);
+        card.appendChild(bot);
+
+        grid.appendChild(card);
+      });
+    }
+
+    function renderAll(){
+      renderStrip();
+      renderGrid();
+    }
+
+    search.addEventListener("input", (ev) => {
+      q = ev.target.value || "";
+      renderGrid(); // no need to rebuild strip
+      // Update counts in strip so it still feels alive? keep it simple: rebuild strip.
+      renderStrip();
+    });
+
+    // First paint
+    renderAll();
+  </script>
+</body>
+  </html>

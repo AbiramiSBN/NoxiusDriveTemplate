@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NoxiustDrive</title>
+  <style>
+    :root{
+      --border: rgba(255,255,255,.14);
+      --border2: rgba(255,255,255,.20);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --accent:#60a5fa;
+      --panel: rgba(0,0,0,.18);
+      --panel2: rgba(255,255,255,.05);
+      --shadow: 0 24px 90px rgba(0,0,0,.70);
+      --font: system-ui, -apple-system, "Segoe UI Variable", "Segoe UI", Roboto, Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; overflow:hidden; font-family:var(--font); color:var(--text);
+      background:
+        linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.65)),
+        url("pictures/wallpapers/wallpaper2.jpeg");
+      background-size:cover; background-position:center; background-repeat:no-repeat;
+    }
+    .window{position:relative; width:100vw; height:100vh; overflow:hidden;}
+    .mica{
+      position:absolute; inset:0; pointer-events:none;
+      background:
+        radial-gradient(1200px 900px at 20% 15%, rgba(96,165,250,.10), transparent 55%),
+        radial-gradient(900px 700px at 80% 20%, rgba(52,211,153,.06), transparent 60%),
+        linear-gradient(180deg, rgba(0,0,0,.26), rgba(0,0,0,.55));
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+    }
+    .ui{
+      position:relative; z-index:1;
+      width:100%; height:100%;
+      display:flex; flex-direction:column;
+      background: rgba(10,14,24,.55);
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow: var(--shadow);
+    }
+    .titlebar{
+      height:46px; display:flex; align-items:center; justify-content:space-between;
+      padding:0 12px; user-select:none;
+      background: rgba(0,0,0,.34);
+      border-bottom:1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+    .title-left{display:flex; align-items:center; gap:10px;}
+    .appicon{
+      width:26px;height:26px;border-radius:8px;
+      display:grid;place-items:center;
+      background:rgba(96,165,250,.18);
+      border:1px solid rgba(96,165,250,.28);
+    }
+    .apptitle{line-height:1.05}
+    .apptitle b{display:block;font-size:.98rem}
+    .apptitle span{display:block;font-size:.78rem;color:var(--muted)}
+    .cmdbar{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px; user-select:none;
+      background: rgba(0,0,0,.22);
+      border-bottom:1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+    .btn{
+      appearance:none; border:1px solid var(--border2);
+      background: rgba(255,255,255,.07);
+      color:var(--text);
+      padding:8px 10px; border-radius:12px;
+      cursor:pointer; font-size:.92rem;
+      display:inline-flex; gap:8px; align-items:center;
+    }
+    .btn:hover{background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.26)}
+    .btn:disabled{opacity:.45; cursor:not-allowed}
+    .addrrow{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      background: rgba(0,0,0,.14);
+      border-bottom:1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+    .addr{
+      flex:1; min-width:0;
+      display:flex; align-items:center; gap:6px;
+      padding:8px 10px; border-radius:12px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.06);
+      overflow:auto; scrollbar-width: thin;
+      font-family: var(--mono);
+      font-size:.9rem;
+      color: rgba(255,255,255,.92);
+    }
+    .crumb{
+      display:inline-flex; align-items:center; gap:6px;
+      cursor:pointer; padding:3px 6px; border-radius:8px;
+      border:1px solid transparent;
+      white-space:nowrap;
+    }
+    .crumb:hover{background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12)}
+    .sep{color: rgba(255,255,255,.45)}
+    .search{
+      width:min(420px,45vw);
+      display:flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:12px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.06);
+    }
+    .search input{width:100%; border:0; outline:none; background:transparent; color:var(--text); font-size:.92rem}
+    .body{flex:1; display:flex; min-height:0;}
+    .left{
+      width:310px; min-height:0;
+      background: var(--panel);
+      border-right:1px solid var(--border);
+      padding:10px; display:flex; flex-direction:column; gap:10px;
+    }
+    .panehdr{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:8px 10px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: var(--panel2);
+      color:var(--muted);
+      font-size:.84rem; letter-spacing:.08em; text-transform:uppercase;
+      user-select:none;
+    }
+    .tree{overflow:auto}
+    .node{
+      display:flex; align-items:center; gap:10px;
+      padding:10px; border-radius:12px;
+      cursor:pointer; user-select:none;
+      border:1px solid transparent;
+    }
+    .node:hover{background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.14)}
+    .icon{
+      width:30px;height:30px;border-radius:10px;
+      display:grid; place-items:center;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .label b{display:block; font-size:.94rem}
+    .label span{display:block; font-size:.78rem; color:var(--muted); font-family:var(--mono)}
+    .main{flex:1; min-width:0; padding:12px; display:flex; flex-direction:column; min-height:0;}
+    .list{
+      flex:1; min-height:0;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(0,0,0,.16);
+      overflow:hidden; display:flex; flex-direction:column;
+    }
+    .listhead{
+      display:grid;
+      grid-template-columns: 1.55fr .75fr .85fr;
+      padding:10px 12px;
+      background: rgba(255,255,255,.05);
+      border-bottom:1px solid var(--border);
+      color:var(--muted);
+      font-size:.82rem;
+      user-select:none;
+    }
+    .rows{flex:1; overflow:auto; outline:none;}
+    .row{
+      display:grid;
+      grid-template-columns: 1.55fr .75fr .85fr;
+      padding:10px 12px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      align-items:center;
+      cursor:pointer; user-select:none;
+      border-left:3px solid transparent;
+    }
+    .row:hover{background: rgba(255,255,255,.07)}
+    .row.selected{background: rgba(96,165,250,.18); border-left-color: rgba(96,165,250,.78)}
+    .cellname{display:flex; align-items:center; gap:10px; min-width:0}
+    .fileicon{
+      width:30px;height:30px;border-radius:10px;
+      display:grid; place-items:center;
+      background: rgba(96,165,250,.16);
+      border:1px solid rgba(96,165,250,.22);
+      flex:0 0 auto;
+    }
+    .nametext{min-width:0}
+    .nametext b{display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+    .nametext span{display:block; font-size:.8rem; color:var(--muted); font-family:var(--mono); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+    .type,.modified{color:var(--muted); font-size:.9rem}
+    .details{
+      width:360px; min-height:0;
+      background: var(--panel);
+      border-left:1px solid var(--border);
+      padding:12px; display:flex; flex-direction:column; gap:10px;
+    }
+    .preview{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      border-radius:16px;
+      padding:12px;
+      min-height:170px;
+      display:flex; align-items:center; justify-content:center;
+      position:relative; overflow:hidden; user-select:none;
+    }
+    .preview img{
+      max-width:100%; max-height:140px;
+      border-radius:12px; border:1px solid rgba(255,255,255,.10);
+    }
+    .bigicon{font-size:52px}
+    .preview small{
+      position:absolute; bottom:10px; left:12px; right:12px;
+      color: rgba(255,255,255,.78);
+      font-size:.82rem;
+      font-family:var(--mono);
+      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+    }
+    .props{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      border-radius:16px;
+      padding:12px;
+      overflow:auto;
+      flex:1;
+    }
+    .props h3{margin:0 0 10px 0; font-size:.95rem}
+    .kv{display:grid; grid-template-columns:1fr 1.2fr; gap:8px 10px; font-size:.88rem}
+    .k{color:var(--muted)}
+    .v{font-family:var(--mono); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+    .statusbar{
+      height:34px;
+      border-top:1px solid var(--border);
+      background: rgba(0,0,0,.22);
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 12px;
+      color:var(--muted);
+      font-size:.86rem;
+      user-select:none;
+      backdrop-filter: blur(10px);
+    }
+    .ctx{
+      position:fixed; z-index:10000; display:none;
+      min-width:170px;
+      background: rgba(2,6,23,0.92);
+      border:1px solid rgba(255,255,255,0.14);
+      border-radius:14px;
+      box-shadow: 0 16px 50px rgba(0,0,0,0.65);
+      padding:6px;
+      backdrop-filter: blur(16px);
+      user-select:none;
+    }
+    .ctx button{
+      width:100%; border:0; background:transparent;
+      color:var(--text);
+      padding:10px 10px; border-radius:10px;
+      cursor:pointer; text-align:left;
+      font-size:.92rem;
+    }
+    .ctx button:hover{background: rgba(255,255,255,0.08)}
+    .ctx button:disabled{opacity:.45; cursor:not-allowed}
+  </style>
+</head>
+<body>
+  <div class="window">
+    <div class="mica"></div>
+    <div class="ui" id="ui">
+      <div class="titlebar">
+        <div class="title-left">
+          <div class="appicon">🗂️</div>
+          <div class="apptitle">
+            <b>NoxiustDrive</b>
+            <span id="subtitle">Online</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cmdbar">
+        <button class="btn" id="openBtn" disabled>📂 Open</button>
+        <button class="btn" id="upBtn">⬆️ Up</button>
+        <button class="btn" id="refreshBtn">🔄 Refresh</button>
+        <div style="flex:1"></div>
+        <div class="btn" style="cursor:default; opacity:.9;">📡 <span id="net">Ready</span></div>
+      </div>
+
+      <div class="addrrow">
+        <div class="addr" id="addr"></div>
+        <div class="search">🔎 <input id="searchBox" placeholder="Search (filters list)"/></div>
+      </div>
+
+      <div class="body">
+        <div class="left">
+          <div class="panehdr"><span>This PC</span><span>Tree</span></div>
+          <div class="tree" id="tree"></div>
+        </div>
+
+        <div class="main">
+          <div class="list">
+            <div class="listhead"><div>Name</div><div>Type</div><div>Date modified</div></div>
+            <div class="rows" id="rows" tabindex="0"></div>
+          </div>
+        </div>
+
+        <div class="details">
+          <div class="panehdr"><span>Details</span><span>Preview + Properties</span></div>
+          <div class="preview" id="preview">
+            <div class="bigicon">🗂️</div>
+            <small>Select an item</small>
+          </div>
+          <div class="props">
+            <h3>Properties</h3>
+            <div class="kv" id="kv"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="statusbar">
+        <div id="sbLeft">0 items</div>
+        <div id="sbRight">Ready</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctx" id="ctxMenu"><button id="ctxOpen" disabled>Open</button></div>
+
+<script>
+  const rowsEl = document.getElementById("rows");
+  const searchBox = document.getElementById("searchBox");
+  const openBtn = document.getElementById("openBtn");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const upBtn = document.getElementById("upBtn");
+  const addrEl = document.getElementById("addr");
+  const tree = document.getElementById("tree");
+  const preview = document.getElementById("preview");
+  const kv = document.getElementById("kv");
+  const sbLeft = document.getElementById("sbLeft");
+  const sbRight = document.getElementById("sbRight");
+  const net = document.getElementById("net");
+
+  const ctxMenu = document.getElementById("ctxMenu");
+  const ctxOpen = document.getElementById("ctxOpen");
+
+  let items = [];
+  let filtered = [];
+  let selectedIndex = -1;
+
+  function iconFor(item){
+    if(item.kind === "folder") return "📁";
+    const t = (item.type || "").toLowerCase();
+    if(["png","jpg","jpeg","webp","gif","bmp","svg"].includes(t)) return "🖼️";
+    if(["mp3","wav","flac","m4a","aac","ogg"].includes(t)) return "🎵";
+    if(["mp4","webm","mkv","mov"].includes(t)) return "🎬";
+    if(["pdf"].includes(t)) return "📕";
+    if(["txt","md","log","json","xml","yml","yaml"].includes(t)) return "📄";
+    return "📦";
+  }
+
+  function fmtBytes(n){
+    if(!n) return "—";
+    const u = ["B","KB","MB","GB","TB"];
+    let i=0, x=n;
+    while(x>=1024 && i<u.length-1){ x/=1024; i++; }
+    return `${x.toFixed(i?1:0)} ${u[i]}`;
+  }
+
+  function fmtDate(ms){
+    if(!ms) return "—";
+    const d = new Date(ms);
+    return d.toLocaleString();
+  }
+
+  function currentPath(){
+    const p = new URLSearchParams(location.search).get("path") || "";
+    return p.replace(/^\/+/, "").replace(/\/+$/, "");
+  }
+
+  function setPath(p){
+    const url = new URL(location.href);
+    if(p) url.searchParams.set("path", p);
+    else url.searchParams.delete("path");
+    history.pushState({}, "", url);
+    load();
+  }
+
+  function buildCrumbs(pathStr){
+    addrEl.innerHTML = "";
+    const parts = pathStr ? pathStr.split("/") : [];
+    const crumbs = [{ label: "This PC", path: "" }];
+
+    let acc = "";
+    for(const part of parts){
+      acc = acc ? `${acc}/${part}` : part;
+      crumbs.push({ label: part, path: acc });
+    }
+
+    crumbs.forEach((c, i)=>{
+      const el = document.createElement("span");
+      el.className = "crumb";
+      el.textContent = c.label;
+      el.onclick = ()=> setPath(c.path);
+      addrEl.appendChild(el);
+
+      if(i < crumbs.length - 1){
+        const sep = document.createElement("span");
+        sep.className = "sep";
+        sep.textContent = ">";
+        addrEl.appendChild(sep);
+      }
+    });
+  }
+
+  async function load(){
+    hideCtx();
+    net.textContent = "Loading...";
+    sbRight.textContent = "Loading...";
+    selectedIndex = -1;
+
+    const p = currentPath();
+    buildCrumbs(p);
+
+    const q = p ? `?path=${encodeURIComponent(p)}` : "";
+    const r = await fetch(`/api/list${q}`);
+    const data = await r.json();
+
+    if(!r.ok){
+      net.textContent = "Error";
+      sbRight.textContent = data.error || "Error";
+      items = [];
+    } else {
+      net.textContent = "OK";
+      sbRight.textContent = "Ready";
+      items = data.items || [];
+    }
+
+    renderTree();
+    renderRows();
+  }
+
+  function renderTree(){
+    const top = [
+      { name:"Documents", path:"documents", icon:"📄" },
+      { name:"Music", path:"music", icon:"🎵" },
+      { name:"Pictures", path:"pictures", icon:"🖼️" },
+      { name:"Videos", path:"videos", icon:"🎬" }
+    ];
+
+    tree.innerHTML = "";
+    for(const t of top){
+      const n = document.createElement("div");
+      n.className = "node";
+      n.innerHTML = `<div class="icon">${t.icon}</div>
+        <div class="label"><b>${t.name}</b><span>/${t.path}/</span></div>`;
+      n.onclick = ()=> setPath(t.path);
+      tree.appendChild(n);
+    }
+  }
+
+  function applyFilter(){
+    const q = (searchBox.value || "").trim().toLowerCase();
+    filtered = !q ? items : items.filter(x => x.name.toLowerCase().includes(q));
+    if(filtered.length === 0) selectedIndex = -1;
+    else if(selectedIndex < 0 || selectedIndex >= filtered.length) selectedIndex = 0;
+  }
+
+  function selectedItem(){
+    if(selectedIndex < 0 || selectedIndex >= filtered.length) return null;
+    return filtered[selectedIndex];
+  }
+
+  function updateDetails(){
+    const it = selectedItem();
+    openBtn.disabled = !it;
+    ctxOpen.disabled = !it;
+
+    if(!it){
+      preview.innerHTML = `<div class="bigicon">🗂️</div><small>Select an item</small>`;
+      kv.innerHTML = `
+        <div class="k">Name</div><div class="v">—</div>
+        <div class="k">Type</div><div class="v">—</div>
+        <div class="k">Size</div><div class="v">—</div>
+        <div class="k">Modified</div><div class="v">—</div>
+        <div class="k">URL</div><div class="v">—</div>
+      `;
+      return;
+    }
+
+    const ico = iconFor(it);
+    const isImage = it.kind === "file" && ["png","jpg","jpeg","webp","gif","bmp","svg"].includes((it.type||"").toLowerCase());
+
+    if(isImage){
+      preview.innerHTML = `<img src="${it.url}" alt=""><small>${it.url}</small>`;
+    } else {
+      preview.innerHTML = `<div class="bigicon">${ico}</div><small>${it.url}</small>`;
+    }
+
+    kv.innerHTML = `
+      <div class="k">Name</div><div class="v" title="${it.name}">${it.name}</div>
+      <div class="k">Type</div><div class="v">${it.kind === "folder" ? "File folder" : (it.type || "file")}</div>
+      <div class="k">Size</div><div class="v">${it.kind === "folder" ? "—" : fmtBytes(it.size)}</div>
+      <div class="k">Modified</div><div class="v">${fmtDate(it.mtimeMs)}</div>
+      <div class="k">URL</div><div class="v" title="${it.url}">${it.url}</div>
+    `;
+  }
+
+  function renderRows(){
+    rowsEl.innerHTML = "";
+    applyFilter();
+
+    filtered.forEach((e, idx)=>{
+      const row = document.createElement("div");
+      row.className = "row" + (idx === selectedIndex ? " selected" : "");
+      row.innerHTML = `
+        <div class="cellname">
+          <div class="fileicon">${iconFor(e)}</div>
+          <div class="nametext">
+            <b>${e.name}</b>
+            <span>${e.url}</span>
+          </div>
+        </div>
+        <div class="type">${e.kind === "folder" ? "File folder" : (e.type || "file")}</div>
+        <div class="modified">${fmtDate(e.mtimeMs)}</div>
+      `;
+
+      row.addEventListener("click", ()=>{ selectedIndex = idx; hideCtx(); renderRows(); });
+      row.addEventListener("dblclick", ()=>{ selectedIndex = idx; hideCtx(); openSelected(); });
+      row.addEventListener("contextmenu", (ev)=>{ ev.preventDefault(); selectedIndex = idx; renderRows(); showCtx(ev.clientX, ev.clientY); });
+
+      rowsEl.appendChild(row);
+    });
+
+    sbLeft.textContent = `${filtered.length} item${filtered.length===1?"":"s"}`;
+    updateDetails();
+  }
+
+  function openSelected(){
+    const it = selectedItem();
+    if(!it) return;
+    if(it.kind === "folder"){
+      const newPath = it.relPath.replace(/\/+$/, "");
+      setPath(newPath);
+    } else {
+      window.open(it.url, "_blank", "noopener");
+    }
+  }
+
+  upBtn.onclick = ()=>{
+    const p = currentPath();
+    if(!p) return;
+    const parts = p.split("/").filter(Boolean);
+    parts.pop();
+    setPath(parts.join("/"));
+  };
+
+  openBtn.onclick = openSelected;
+  refreshBtn.onclick = load;
+
+  searchBox.addEventListener("input", ()=>{ selectedIndex = -1; renderRows(); });
+
+  rowsEl.addEventListener("keydown", (ev)=>{
+    if(filtered.length === 0) return;
+    if(ev.key === "ArrowDown"){ ev.preventDefault(); selectedIndex = Math.min(filtered.length-1, selectedIndex + 1); renderRows(); }
+    else if(ev.key === "ArrowUp"){ ev.preventDefault(); selectedIndex = Math.max(0, selectedIndex - 1); renderRows(); }
+    else if(ev.key === "Enter"){ ev.preventDefault(); openSelected(); }
+  });
+
+  function showCtx(x,y){
+    ctxMenu.style.display = "block";
+    const pad=8;
+    const w=ctxMenu.offsetWidth, h=ctxMenu.offsetHeight;
+    ctxMenu.style.left = Math.max(pad, Math.min(x, innerWidth-w-pad)) + "px";
+    ctxMenu.style.top  = Math.max(pad, Math.min(y, innerHeight-h-pad)) + "px";
+    updateDetails();
+  }
+  function hideCtx(){ ctxMenu.style.display = "none"; }
+  ctxOpen.onclick = ()=>{ hideCtx(); openSelected(); };
+  document.addEventListener("click", (ev)=>{ if(!ev.target.closest(".ctx")) hideCtx(); });
+  window.addEventListener("resize", hideCtx);
+  window.addEventListener("popstate", load);
+
+  load();
+</script>
+</body>
+</html>
