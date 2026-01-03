@@ -26,6 +26,7 @@
         url("pictures/wallpapers/wallpaper2.jpeg");
       background-size:cover; background-position:center; background-repeat:no-repeat;
     }
+
     .window{position:relative; width:100vw; height:100vh; overflow:hidden;}
     .mica{
       position:absolute; inset:0; pointer-events:none;
@@ -44,6 +45,7 @@
       border:1px solid rgba(255,255,255,.10);
       box-shadow: var(--shadow);
     }
+
     .titlebar{
       height:46px; display:flex; align-items:center; justify-content:space-between;
       padding:0 12px; user-select:none;
@@ -61,6 +63,7 @@
     .apptitle{line-height:1.05}
     .apptitle b{display:block;font-size:.98rem}
     .apptitle span{display:block;font-size:.78rem;color:var(--muted)}
+
     .cmdbar{
       display:flex; align-items:center; gap:10px;
       padding:10px 12px; user-select:none;
@@ -78,6 +81,7 @@
     }
     .btn:hover{background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.26)}
     .btn:disabled{opacity:.45; cursor:not-allowed}
+
     .addrrow{
       display:flex; align-items:center; gap:10px;
       padding:10px 12px;
@@ -112,6 +116,7 @@
       background: rgba(255,255,255,.06);
     }
     .search input{width:100%; border:0; outline:none; background:transparent; color:var(--text); font-size:.92rem}
+
     .body{flex:1; display:flex; min-height:0;}
     .left{
       width:310px; min-height:0;
@@ -144,6 +149,7 @@
     }
     .label b{display:block; font-size:.94rem}
     .label span{display:block; font-size:.78rem; color:var(--muted); font-family:var(--mono)}
+
     .main{flex:1; min-width:0; padding:12px; display:flex; flex-direction:column; min-height:0;}
     .list{
       flex:1; min-height:0;
@@ -186,6 +192,7 @@
     .nametext b{display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
     .nametext span{display:block; font-size:.8rem; color:var(--muted); font-family:var(--mono); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
     .type,.modified{color:var(--muted); font-size:.9rem}
+
     .details{
       width:360px; min-height:0;
       background: var(--panel);
@@ -225,6 +232,7 @@
     .kv{display:grid; grid-template-columns:1fr 1.2fr; gap:8px 10px; font-size:.88rem}
     .k{color:var(--muted)}
     .v{font-family:var(--mono); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+
     .statusbar{
       height:34px;
       border-top:1px solid var(--border);
@@ -236,6 +244,7 @@
       user-select:none;
       backdrop-filter: blur(10px);
     }
+
     .ctx{
       position:fixed; z-index:10000; display:none;
       min-width:170px;
@@ -258,9 +267,11 @@
     .ctx button:disabled{opacity:.45; cursor:not-allowed}
   </style>
 </head>
+
 <body>
   <div class="window">
     <div class="mica"></div>
+
     <div class="ui" id="ui">
       <div class="titlebar">
         <div class="title-left">
@@ -270,6 +281,7 @@
             <span id="subtitle">Online</span>
           </div>
         </div>
+        <div class="winbtns" aria-hidden="true"></div>
       </div>
 
       <div class="cmdbar">
@@ -337,19 +349,32 @@
   const ctxMenu = document.getElementById("ctxMenu");
   const ctxOpen = document.getElementById("ctxOpen");
 
+  const TOPS = [
+    { key:"documents", name:"Documents", icon:"📄" },
+    { key:"music",     name:"Music",     icon:"🎵" },
+    { key:"pictures",  name:"Pictures",  icon:"🖼️" },
+    { key:"videos",    name:"Videos",    icon:"🎬" },
+  ];
+
+  let INDEX = null;
   let items = [];
   let filtered = [];
   let selectedIndex = -1;
 
   function iconFor(item){
     if(item.kind === "folder") return "📁";
-    const t = (item.type || "").toLowerCase();
+    const t = (item.type || extOf(item.name) || "").toLowerCase();
     if(["png","jpg","jpeg","webp","gif","bmp","svg"].includes(t)) return "🖼️";
     if(["mp3","wav","flac","m4a","aac","ogg"].includes(t)) return "🎵";
     if(["mp4","webm","mkv","mov"].includes(t)) return "🎬";
     if(["pdf"].includes(t)) return "📕";
     if(["txt","md","log","json","xml","yml","yaml"].includes(t)) return "📄";
     return "📦";
+  }
+
+  function extOf(name){
+    const i = name.lastIndexOf(".");
+    return i >= 0 ? name.slice(i+1) : "";
   }
 
   function fmtBytes(n){
@@ -406,6 +431,55 @@
     });
   }
 
+  async function loadIndex(){
+    const r = await fetch(`/_index.json?ts=${Date.now()}`, { cache: "no-store" });
+    if(!r.ok) throw new Error(`Failed to load /_index.json (${r.status})`);
+    return await r.json();
+  }
+
+  function nodeChildrenForPath(p){
+    if(!INDEX) return [];
+
+    // Root view = show 4 top folders
+    if(!p){
+      return TOPS.map(t => ({
+        name: t.name,
+        kind: "folder",
+        size: 0,
+        mtimeMs: INDEX.generatedAt || 0,
+        relPath: t.key,
+        url: `/${t.key}/`,
+        children: INDEX.tree?.[t.key] || []
+      }));
+    }
+
+    const parts = p.split("/").filter(Boolean);
+    const root = parts.shift();
+    let cur = { children: INDEX.tree?.[root] || [] };
+
+    for(const part of parts){
+      const next = (cur.children || []).find(x => x.kind === "folder" && x.name === part);
+      if(!next) return [];
+      cur = next;
+    }
+
+    const ch = (cur.children || []).map(x => ({
+      ...x,
+      // ensure url exists
+      url: x.url || (x.kind === "folder" ? `/${x.relPath}/` : `/${x.relPath}`),
+      // infer type (for icons)
+      type: x.kind === "folder" ? "folder" : (extOf(x.name) || "file")
+    }));
+
+    // Sorting safety (folders first)
+    ch.sort((a,b)=>{
+      if(a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return ch;
+  }
+
   async function load(){
     hideCtx();
     net.textContent = "Loading...";
@@ -415,18 +489,15 @@
     const p = currentPath();
     buildCrumbs(p);
 
-    const q = p ? `?path=${encodeURIComponent(p)}` : "";
-    const r = await fetch(`/_index.json?ts=${Date.now()}`);
-    const data = await r.json();
-
-    if(!r.ok){
-      net.textContent = "Error";
-      sbRight.textContent = data.error || "Error";
-      items = [];
-    } else {
+    try{
+      INDEX = await loadIndex();
+      items = nodeChildrenForPath(p);
       net.textContent = "OK";
       sbRight.textContent = "Ready";
-      items = data.items || [];
+    } catch(e){
+      items = [];
+      net.textContent = "Error";
+      sbRight.textContent = String(e);
     }
 
     renderTree();
@@ -434,27 +505,20 @@
   }
 
   function renderTree(){
-    const top = [
-      { name:"Documents", path:"documents", icon:"📄" },
-      { name:"Music", path:"music", icon:"🎵" },
-      { name:"Pictures", path:"pictures", icon:"🖼️" },
-      { name:"Videos", path:"videos", icon:"🎬" }
-    ];
-
     tree.innerHTML = "";
-    for(const t of top){
+    for(const t of TOPS){
       const n = document.createElement("div");
       n.className = "node";
       n.innerHTML = `<div class="icon">${t.icon}</div>
-        <div class="label"><b>${t.name}</b><span>/${t.path}/</span></div>`;
-      n.onclick = ()=> setPath(t.path);
+        <div class="label"><b>${t.name}</b><span>/${t.key}/</span></div>`;
+      n.onclick = ()=> setPath(t.key);
       tree.appendChild(n);
     }
   }
 
   function applyFilter(){
     const q = (searchBox.value || "").trim().toLowerCase();
-    filtered = !q ? items : items.filter(x => x.name.toLowerCase().includes(q));
+    filtered = !q ? items : items.filter(x => (x.name||"").toLowerCase().includes(q));
     if(filtered.length === 0) selectedIndex = -1;
     else if(selectedIndex < 0 || selectedIndex >= filtered.length) selectedIndex = 0;
   }
@@ -482,7 +546,8 @@
     }
 
     const ico = iconFor(it);
-    const isImage = it.kind === "file" && ["png","jpg","jpeg","webp","gif","bmp","svg"].includes((it.type||"").toLowerCase());
+    const ext = extOf(it.name).toLowerCase();
+    const isImage = it.kind === "file" && ["png","jpg","jpeg","webp","gif","bmp","svg"].includes(ext);
 
     if(isImage){
       preview.innerHTML = `<img src="${it.url}" alt=""><small>${it.url}</small>`;
@@ -492,7 +557,7 @@
 
     kv.innerHTML = `
       <div class="k">Name</div><div class="v" title="${it.name}">${it.name}</div>
-      <div class="k">Type</div><div class="v">${it.kind === "folder" ? "File folder" : (it.type || "file")}</div>
+      <div class="k">Type</div><div class="v">${it.kind === "folder" ? "File folder" : (ext || "file")}</div>
       <div class="k">Size</div><div class="v">${it.kind === "folder" ? "—" : fmtBytes(it.size)}</div>
       <div class="k">Modified</div><div class="v">${fmtDate(it.mtimeMs)}</div>
       <div class="k">URL</div><div class="v" title="${it.url}">${it.url}</div>
@@ -514,13 +579,28 @@
             <span>${e.url}</span>
           </div>
         </div>
-        <div class="type">${e.kind === "folder" ? "File folder" : (e.type || "file")}</div>
+        <div class="type">${e.kind === "folder" ? "File folder" : (extOf(e.name) || "file")}</div>
         <div class="modified">${fmtDate(e.mtimeMs)}</div>
       `;
 
-      row.addEventListener("click", ()=>{ selectedIndex = idx; hideCtx(); renderRows(); });
-      row.addEventListener("dblclick", ()=>{ selectedIndex = idx; hideCtx(); openSelected(); });
-      row.addEventListener("contextmenu", (ev)=>{ ev.preventDefault(); selectedIndex = idx; renderRows(); showCtx(ev.clientX, ev.clientY); });
+      row.addEventListener("click", ()=>{
+        selectedIndex = idx;
+        hideCtx();
+        renderRows();
+      });
+
+      row.addEventListener("dblclick", ()=>{
+        selectedIndex = idx;
+        hideCtx();
+        openSelected();
+      });
+
+      row.addEventListener("contextmenu", (ev)=>{
+        ev.preventDefault();
+        selectedIndex = idx;
+        renderRows();
+        showCtx(ev.clientX, ev.clientY);
+      });
 
       rowsEl.appendChild(row);
     });
@@ -532,6 +612,7 @@
   function openSelected(){
     const it = selectedItem();
     if(!it) return;
+
     if(it.kind === "folder"){
       const newPath = it.relPath.replace(/\/+$/, "");
       setPath(newPath);
@@ -551,13 +632,25 @@
   openBtn.onclick = openSelected;
   refreshBtn.onclick = load;
 
-  searchBox.addEventListener("input", ()=>{ selectedIndex = -1; renderRows(); });
+  searchBox.addEventListener("input", ()=>{
+    selectedIndex = -1;
+    renderRows();
+  });
 
   rowsEl.addEventListener("keydown", (ev)=>{
     if(filtered.length === 0) return;
-    if(ev.key === "ArrowDown"){ ev.preventDefault(); selectedIndex = Math.min(filtered.length-1, selectedIndex + 1); renderRows(); }
-    else if(ev.key === "ArrowUp"){ ev.preventDefault(); selectedIndex = Math.max(0, selectedIndex - 1); renderRows(); }
-    else if(ev.key === "Enter"){ ev.preventDefault(); openSelected(); }
+    if(ev.key === "ArrowDown"){
+      ev.preventDefault();
+      selectedIndex = Math.min(filtered.length-1, selectedIndex + 1);
+      renderRows();
+    } else if(ev.key === "ArrowUp"){
+      ev.preventDefault();
+      selectedIndex = Math.max(0, selectedIndex - 1);
+      renderRows();
+    } else if(ev.key === "Enter"){
+      ev.preventDefault();
+      openSelected();
+    }
   });
 
   function showCtx(x,y){
@@ -569,11 +662,12 @@
     updateDetails();
   }
   function hideCtx(){ ctxMenu.style.display = "none"; }
+
   ctxOpen.onclick = ()=>{ hideCtx(); openSelected(); };
   document.addEventListener("click", (ev)=>{ if(!ev.target.closest(".ctx")) hideCtx(); });
   window.addEventListener("resize", hideCtx);
-  window.addEventListener("popstate", load);
 
+  window.addEventListener("popstate", load);
   load();
 </script>
 </body>
